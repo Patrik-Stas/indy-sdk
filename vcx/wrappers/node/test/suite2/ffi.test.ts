@@ -4,6 +4,7 @@ import { assert } from 'chai'
 import * as ffi from 'ffi'
 import { initVcxTestMode, shouldThrow } from 'helpers/utils'
 import { initVcx, VCXCode, VCXRuntime } from 'src'
+import * as os from "os"
 
 describe('vcxInit', () => {
   it('should throw if invalid path provided', async () => {
@@ -20,7 +21,14 @@ describe('vcxInit', () => {
 // these tests were created to only test that the ffi could be called with each function
 
 describe('Using the vcx ffi directly', () => {
-  const path = '/usr/lib/libvcx.so'
+  const platform = os.platform()
+  const postfix = (platform === 'darwin') ? 'dylib' : (platform === 'win32') ? 'dll' : 'so'
+  const library = `libvcx.${postfix}`
+  const path = (platform === 'darwin')
+    ? `/usr/local/lib/${library}`
+    : (platform === 'win32')
+        ? `c:\\windows\\system32\\${library}`
+        : `/usr/lib/${library}`
   const run = new VCXRuntime({ basepath: path })
 
   before(() => initVcxTestMode())

@@ -1,4 +1,5 @@
 import * as ffi from 'ffi'
+import * as os from 'os'
 import * as path from 'path'
 
 import { FFIConfiguration, IFFIEntryPoint } from './rustlib'
@@ -18,14 +19,21 @@ export class VCXRuntime {
 
   constructor (config: IVCXRuntimeConfig = {}) {
     this._config = config
-     // initialize FFI
+    // initialize FFI
     const libraryPath = this._initializeBasepath()
     this.ffi = ffi.Library(libraryPath, FFIConfiguration)
   }
 
   private _initializeBasepath = (): string => {
-    const library = 'libvcx.so' // TODO: FIXME provide better way to resolve library
+    const platform = os.platform()
+    const postfix = (platform === 'darwin') ? 'dylib' : (platform === 'win32') ? 'dll' : 'so'
+    const library = `libvcx.${postfix}`
+    const vcxPath = (platform === 'darwin')
+        ? `/usr/local/lib/${library}`
+        : (platform === 'win32')
+            ? `c:\\windows\\system32\\${library}`
+            : `/usr/lib/${library}`
     const customPath = process.env.LIBVCX_PATH ? process.env.LIBVCX_PATH + library : undefined
-    return customPath || this._config.basepath || path.resolve(__dirname, '/usr/lib/' + library)
+    return customPath || this._config.basepath || path.resolve(__dirname, vcxPath)
   }
 }
