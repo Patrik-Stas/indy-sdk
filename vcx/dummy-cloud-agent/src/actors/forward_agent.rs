@@ -172,7 +172,7 @@ impl ForwardAgent {
     }
 
     fn _get_endpoint(&self) -> (String, String) {
-        trace!("ForwardAgent::_get_endpoint >>");
+        info!("ForwardAgent::_get_endpoint >>");
         (self.did.clone(), self.verkey.clone())
     }
 
@@ -180,6 +180,7 @@ impl ForwardAgent {
                         msg: Vec<u8>) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgent::_forward_a2a_msg >> {:?}", msg);
 
+        info!("ForwardAgent::_forward_a2a_msg");
         future::ok(())
             .into_actor(self)
             .and_then(move |_, slf, _| {
@@ -206,7 +207,7 @@ impl ForwardAgent {
     fn _handle_a2a_msg(&mut self,
                        msg: Vec<u8>) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgent::_handle_a2a_msg >> {:?}", msg);
-
+        info!("ForwardAgent::_handle_a2a_msg");
         future::ok(())
             .into_actor(self)
             .and_then(move |_, slf, _| {
@@ -228,7 +229,7 @@ impl ForwardAgent {
     fn _connect(&mut self,
                 sender_vk: String,
                 msg: Connect) -> ResponseActFuture<Self, Vec<u8>, Error> {
-        trace!("ForwardAgent::_connect >> {:?}, {:?}", sender_vk, msg);
+        info!("ForwardAgent::_connect >> {:?}, {:#?}", sender_vk, msg);
 
         let Connect { from_did: their_did, from_did_verkey: their_verkey } = msg;
 
@@ -250,10 +251,12 @@ impl ForwardAgent {
                     .into_actor(slf)
             })
             .and_then(move |(my_did, my_verkey, their_verkey), slf, _| {
-                let msgs = vec![A2AMessage::Connected(Connected {
+                let reply_msg = A2AMessage::Connected(Connected {
                     with_pairwise_did: my_did,
                     with_pairwise_did_verkey: my_verkey,
-                })];
+                });
+                info!("Going to reply with message {:#?}", &reply_msg );
+                let msgs = vec![reply_msg ];
 
                 A2AMessage::prepare_authcrypted(slf.wallet_handle, &slf.verkey, &their_verkey, &msgs)
                     .map_err(|err| err.context("Can't bundle and authcrypt connected message.").into())
@@ -272,6 +275,7 @@ impl Handler<ForwardA2AMsg> for ForwardAgent {
 
     fn handle(&mut self, msg: ForwardA2AMsg, _cnxt: &mut Self::Context) -> Self::Result {
         trace!("Handler<ForwardA2AMsg>::handle >> {:?}", msg);
+        info!("Handler<ForwardA2AMsg>::handle");
         self._forward_a2a_msg(msg.0)
     }
 }
@@ -281,6 +285,7 @@ impl Handler<GetEndpoint> for ForwardAgent {
 
     fn handle(&mut self, _msg: GetEndpoint, _cnxt: &mut Self::Context) -> Self::Result {
         trace!("Handler<GetEndpoint>::handle >> {:?}", _msg);
+        info!("Handler<GetEndpoint>::handle");
         let (did, verkey) = self._get_endpoint();
         Ok(Endpoint { did, verkey })
     }
@@ -291,6 +296,7 @@ impl Handler<HandleA2AMsg> for ForwardAgent {
 
     fn handle(&mut self, msg: HandleA2AMsg, _: &mut Self::Context) -> Self::Result {
         trace!("Handler<AgentMsgsBundle>::handle >> {:?}", msg);
+        info!("Handler<AgentMsgsBundle>::handle");
         self._handle_a2a_msg(msg.0)
     }
 }

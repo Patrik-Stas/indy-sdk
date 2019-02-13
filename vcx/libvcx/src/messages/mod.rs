@@ -10,6 +10,7 @@ pub mod update_connection;
 pub mod update_message;
 pub mod message_type;
 
+use std::str;
 use std::u8;
 use settings;
 use utils::libindy::crypto;
@@ -654,6 +655,7 @@ pub fn prepare_message_for_agency(message: &A2AMessage, agency_did: &str) -> Res
 fn bundle_for_agency_v1(message: &A2AMessage, agency_did: &str) -> Result<Vec<u8>, u32> {
     let agent_vk = settings::get_config_value(settings::CONFIG_REMOTE_TO_SDK_VERKEY)?;
     let my_vk = settings::get_config_value(settings::CONFIG_SDK_TO_REMOTE_VERKEY)?;
+    info!("Bundling for v1 agency. Agency did = {}. My VK = {}, Agent VK = {}", agency_did, agent_vk, my_vk);
 
     let message = rmp_serde::to_vec_named(&message).or(Err(error::UNKNOWN_ERROR.code_num))?;
     let message = Bundled::create(message).encode()?;
@@ -666,11 +668,13 @@ fn bundle_for_agency_v1(message: &A2AMessage, agency_did: &str) -> Result<Vec<u8
 fn pack_for_agency_v2(message: &A2AMessage, agency_did: &str) -> Result<Vec<u8>, u32> {
     let agent_vk = settings::get_config_value(settings::CONFIG_REMOTE_TO_SDK_VERKEY)?;
     let my_vk = settings::get_config_value(settings::CONFIG_SDK_TO_REMOTE_VERKEY)?;
+    info!("Bundling for v2 agency. Agency did = {}. My VK = {}, Agent VK = {}", agency_did, agent_vk, my_vk);
 
     let message = serde_json::to_string(&message).or(Err(error::SERIALIZATION_ERROR.code_num))?;
     let receiver_keys = ::serde_json::to_string(&vec![&agent_vk]).or(Err(error::SERIALIZATION_ERROR.code_num))?;
 
     let message = crypto::pack_message(Some(&my_vk), &receiver_keys, message.as_bytes())?;
+    info!("packed message {:?} ", str::from_utf8(&message).unwrap());
 
     prepare_forward_message(message, agency_did)
 }
@@ -774,8 +778,10 @@ pub fn extract_json_payload(data: &Vec<u8>) -> Result<String, u32> {
 
 fn prepare_forward_message(message: Vec<u8>, did: &str) -> Result<Vec<u8>, u32> {
     let agency_vk = settings::get_config_value(settings::CONFIG_AGENCY_VERKEY)?;
+    info!("prepare_forward_message agency vk = {}", agency_vk);
 
     let message = Forward::new(did.to_string(), message);
+    info!("Wrapped the message into Forward message. MsgType={:?} ForwardToDid={:?}", message.msg_type, message.fwd);
 
     match settings::get_protocol_type() {
         settings::ProtocolTypes::V1 => prepare_forward_message_for_agency_v1(&message, &agency_vk),

@@ -201,7 +201,7 @@ impl AgentConnection {
 
     fn handle_a2a_msg(&mut self,
                       msg: Vec<u8>) -> ResponseActFuture<Self, Vec<u8>, Error> {
-        trace!("AgentConnection::handle_a2a_msg >> {:?}", msg);
+        info!("AgentConnection::handle_a2a_msg");
 
         future::ok(())
             .into_actor(self)
@@ -413,8 +413,8 @@ impl AgentConnection {
     }
 
     fn handle_send_remote_message(&mut self,
-                              msg: SendRemoteMessage,
-                              sender_verkey: &str) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
+                                  msg: SendRemoteMessage,
+                                  sender_verkey: &str) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
         trace!("AgentConnection::handle_send_remote_message >> {:?}, {:?}", msg, sender_verkey);
 
         let send_msg = msg.send_msg;
@@ -494,6 +494,7 @@ impl AgentConnection {
 
     fn handle_get_messages(&mut self, msg: GetMessages) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
         trace!("AgentConnection::handle_get_messages >> {:?}", msg);
+        info!("AgentConnection::handle_get_messages");
 
         let msgs = vec![A2AMessage::Messages(
             Messages {
@@ -557,14 +558,14 @@ impl AgentConnection {
 
     fn handle_agent2conn_message(&mut self,
                                  msg: A2ConnMessage) -> ResponseFuture<A2ConnMessage, Error> {
-        trace!("AgentConnection::handle_agent_to_connection_message >> {:?}", msg);
+        info!("AgentConnection::handle_agent_to_connection_message");
 
         match msg {
             A2ConnMessage::GetMessages(msg) => {
                 let msg = A2ConnMessage::MessagesByConnection(
                     MessagesByConnection {
                         did: self.user_pairwise_did.clone(),
-                        msgs: self.get_messages(msg)
+                        msgs: self.get_messages(msg),
                     });
                 ok!(msg)
             }
@@ -573,7 +574,7 @@ impl AgentConnection {
                 let msg = A2ConnMessage::MessageStatusUpdatedByConnection(
                     UidByConnection {
                         uids,
-                        pairwise_did: self.user_pairwise_did.clone()
+                        pairwise_did: self.user_pairwise_did.clone(),
                     });
                 ok!(msg)
             }
@@ -649,7 +650,7 @@ impl AgentConnection {
                     forward_agent_detail: msg_detail.sender_agency_detail.clone(),
                     agent_detail: AgentDetail {
                         did: msg_detail.sender_detail.did.clone(),
-                        verkey: msg_detail.sender_detail.verkey.clone()
+                        verkey: msg_detail.sender_detail.verkey.clone(),
                     },
                     agent_key_dlg_proof: msg_detail.sender_detail.agent_key_dlg_proof.clone(),
                 });
@@ -709,7 +710,7 @@ impl AgentConnection {
                     forward_agent_detail: msg_detail.sender_agency_detail.clone(),
                     agent_detail: AgentDetail {
                         did: msg_detail.sender_detail.did.clone(),
-                        verkey: msg_detail.sender_detail.verkey.clone()
+                        verkey: msg_detail.sender_detail.verkey.clone(),
                     },
                     agent_key_dlg_proof: msg_detail.sender_detail.agent_key_dlg_proof.clone(),
                 });
@@ -1128,7 +1129,7 @@ impl AgentConnection {
 
         let payload_msg = Payload {
             type_: PayloadTypes::build(PayloadKinds::from(type_)),
-            msg: to_i8(&msg)
+            msg: to_i8(&msg),
         };
 
         rmp_serde::to_vec_named(&payload_msg)
@@ -1167,7 +1168,7 @@ impl AgentConnection {
                 let msg_created = MessageCreated { uid: msg.uid.clone() };
                 let msg_detail = ConnectionRequestMessageDetailResp {
                     invite_detail,
-                    url_to_invite_detail: "".to_string() // format!("{}/agency/invite/{}?msg_uid{}", AGENCY_DOMAIN_URL_PREFIX, self.agent_pairwise_did, msg_uid)
+                    url_to_invite_detail: "".to_string(), // format!("{}/agency/invite/{}?msg_uid{}", AGENCY_DOMAIN_URL_PREFIX, self.agent_pairwise_did, msg_uid)
                 };
 
                 vec![A2AMessage::MessageCreated(msg_created),
@@ -1274,7 +1275,7 @@ impl AgentConnection {
                         reply_to_msg_id: reply_to.map(String::from),
                         msg,
                         title,
-                        detail
+                        detail,
                     };
 
                     vec![A2AMessage::SendRemoteMessage(msg)]
@@ -1326,7 +1327,7 @@ impl Handler<HandleA2ConnMsg> for AgentConnection {
 
 enum MessageHandlerRole {
     Owner,
-    Remote
+    Remote,
 }
 
 #[cfg(test)]
@@ -1337,7 +1338,9 @@ mod tests {
 
     #[test]
     fn agent_create_connection_request_works() {
+        std::env::set_var("RUST_LOG", "warn");
         run_agent_test(|(e_wallet_handle, agent_did, agent_verkey, agent_pw_did, agent_pw_vk, forward_agent)| {
+            warn!("is this working????");
             future::ok(())
                 .and_then(move |_| {
                     let msg = compose_create_connection_request(e_wallet_handle,

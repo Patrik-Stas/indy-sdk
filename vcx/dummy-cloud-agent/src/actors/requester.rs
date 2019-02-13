@@ -63,6 +63,7 @@ impl Handler<RemoteMsg> for Requester {
 
     fn handle(&mut self, msg: RemoteMsg, _: &mut Self::Context) -> Self::Result {
         trace!("Handler<SendRemoteMessage>::handle >> {:?}", msg);
+        info!("Handler<SendRemoteMessage>::handle");
         self.send_message(msg.body, msg.endpoint)
     }
 }

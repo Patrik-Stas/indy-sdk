@@ -1,10 +1,12 @@
 use settings;
+use std::str;
 use utils::constants::*;
 use messages::{A2AMessage, A2AMessageKinds, prepare_message_for_agency, parse_response_from_agency};
 use messages::message_type::MessageTypes;
 use utils::{error, httpclient};
 use utils::libindy::{wallet, anoncreds};
 use utils::libindy::signus::create_and_store_my_did;
+use messages::get_message;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Connect {
@@ -88,6 +90,13 @@ pub struct Config {
     path: Option<String>,
 }
 
+pub fn build_get_message() {
+    info!("build get_mesages");
+    let builder = get_message::GetMessagesBuilder::create();
+//    builder.
+//    msg_type: MessageTypes::build(A2AMessageKinds::CreateMessage);
+}
+
 pub fn connect_register_provision(config: &str) -> Result<String, u32> {
     trace!("connect_register_provision >>> config: {:?}", config);
 
@@ -103,6 +112,14 @@ pub fn connect_register_provision(config: &str) -> Result<String, u32> {
     settings::set_config_value(settings::CONFIG_AGENCY_VERKEY, &my_config.agency_verkey);
     settings::set_config_value(settings::CONFIG_REMOTE_TO_SDK_VERKEY, &my_config.agency_verkey);
     settings::set_config_value(settings::CONFIG_WALLET_KEY, &my_config.wallet_key);
+
+    info!("{} == {:?}", settings::CONFIG_PROTOCOL_TYPE, settings::get_config_value(settings::CONFIG_PROTOCOL_TYPE));
+    info!("{} == {:?}", settings::CONFIG_AGENCY_ENDPOINT, settings::get_config_value(settings::CONFIG_AGENCY_ENDPOINT));
+    info!("{} == {:?}", settings::CONFIG_WALLET_NAME, settings::get_config_value(settings::CONFIG_WALLET_NAME));
+    info!("{} == {:?}", settings::CONFIG_AGENCY_DID, settings::get_config_value(settings::CONFIG_AGENCY_DID));
+    info!("{} == {:?}", settings::CONFIG_AGENCY_VERKEY, settings::get_config_value(settings::CONFIG_AGENCY_VERKEY));
+    info!("{} == {:?}", settings::CONFIG_REMOTE_TO_SDK_VERKEY, settings::get_config_value(settings::CONFIG_REMOTE_TO_SDK_VERKEY));
+    info!("{} == {:?}", settings::CONFIG_WALLET_KEY, settings::get_config_value(settings::CONFIG_WALLET_KEY));
 
     if let Some(key_derivation) = &my_config.wallet_key_derivation {
         settings::set_config_value(settings::CONFIG_WALLET_KEY_DERIVATION, key_derivation);
@@ -120,6 +137,7 @@ pub fn connect_register_provision(config: &str) -> Result<String, u32> {
     let logo = my_config.logo.unwrap_or(String::from("<CHANGE_ME>"));
     let path = my_config.path.unwrap_or(String::from("<CHANGE_ME>"));
 
+    info!("agent seed = {:?}", my_config.agent_seed);
     let (my_did, my_vk) = create_and_store_my_did(my_config.agent_seed.as_ref().map(String::as_str))?;
 
     let (issuer_did, issuer_vk) = if my_config.enterprise_seed != my_config.agent_seed {
@@ -128,21 +146,21 @@ pub fn connect_register_provision(config: &str) -> Result<String, u32> {
         (my_did.clone(), my_vk.clone())
     };
 
+    info!("my institution did = {}  my institution vk = {} ", my_did, my_vk);
     settings::set_config_value(settings::CONFIG_INSTITUTION_DID, &my_did);
     settings::set_config_value(settings::CONFIG_SDK_TO_REMOTE_VERKEY, &my_vk);
 
     /* STEP 1 - CONNECT */
-    if settings::test_agency_mode_enabled() {
-        httpclient::set_next_u8_response(CONNECTED_RESPONSE.to_vec());
-    }
-
     trace!("Connecting to Agency");
-    let message = A2AMessage::Connect(Connect {
+    let connect_message = Connect {
         msg_type: MessageTypes::build(A2AMessageKinds::Connect),
         from_did: my_did.to_string(),
         from_vk: my_vk.to_string(),
-    });
+    };
+    info!("About to send a2a connect message: {:#?}", connect_message);
+    let message = A2AMessage::Connect(connect_message);
 
+    info!("Patrik about to call send_message_to_agency, to agency = {}", &my_config.agency_did);
     let mut response = send_message_to_agency(&message, &my_config.agency_did)?;
     let response: ConnectResponse = ConnectResponse::from_a2a_message(response.remove(0))?;
 
@@ -150,11 +168,6 @@ pub fn connect_register_provision(config: &str) -> Result<String, u32> {
     let agency_pw_did = response.from_did;
 
     settings::set_config_value(settings::CONFIG_REMOTE_TO_SDK_VERKEY, &agency_pw_vk);
-
-    /* STEP 2 - REGISTER */
-    if settings::test_agency_mode_enabled() {
-        httpclient::set_next_u8_response(REGISTER_RESPONSE.to_vec());
-    }
 
     let message = A2AMessage::SignUp(SignUp {
         msg_type: MessageTypes::build(A2AMessageKinds::SignUp)
@@ -174,6 +187,7 @@ pub fn connect_register_provision(config: &str) -> Result<String, u32> {
 
     let mut response = send_message_to_agency(&message, &agency_pw_did)?;
     let response: CreateAgentResponse = CreateAgentResponse::from_a2a_message(response.remove(0))?;
+
 
     let agent_did = response.from_did;
     let agent_vk = response.from_vk;
@@ -203,6 +217,8 @@ pub fn connect_register_provision(config: &str) -> Result<String, u32> {
         final_config["wallet_type"] = json!(wallet_type);
     }
 
+    get_message::get_connection_messages()
+
     wallet::close_wallet()?;
 
     Ok(final_config.to_string())
@@ -216,7 +232,7 @@ pub fn update_agent_info(id: &str, value: &str) -> Result<(), u32> {
         com_method: ComMethod {
             id: id.to_string(),
             e_type: 1,
-            value: value.to_string()
+            value: value.to_string(),
         },
     });
 
@@ -232,32 +248,44 @@ pub fn update_agent_info(id: &str, value: &str) -> Result<(), u32> {
 }
 
 pub fn send_message_to_agency(message: &A2AMessage, did: &str) -> Result<Vec<A2AMessage>, u32> {
+    info!("Patrik send_message_to_agency. Message = {:#?}. Agency did = {:}", message, did);
     let data = prepare_message_for_agency(message, did)?;
     let response = httpclient::post_u8(&data).or(Err(error::INVALID_HTTP_RESPONSE.code_num))?;
-    parse_response_from_agency(&response)
+    let parsed = parse_response_from_agency(&response);
+    info!("Got back response {:#?}", &parsed);
+    parsed
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn run_test<T>(test: T) -> ()
+        where T: FnOnce() -> ()
+    {
+        test();
+    }
+
     #[test]
     fn test_connect_register_provision() {
         init!("true");
-
-        let agency_did = "Ab8TvZa3Q19VNkQVzAWVL7";
-        let agency_vk = "5LXaR43B1aQyeh94VBP8LG1Sgvjk7aNfqiksBCSjwqbf";
-        let host = "http://www.whocares.org";
-        let wallet_key = "test_key";
-        let config = json!({
+        std::env::set_var("RUST_LOG", "trace");
+        run_test(|| {
+            warn!("Patrik test_connect_register_provision");
+            let agency_did = "Ab8TvZa3Q19VNkQVzAWVL7";
+            let agency_vk = "5LXaR43B1aQyeh94VBP8LG1Sgvjk7aNfqiksBCSjwqbf";
+            let host = "http://www.whocares.org";
+            let wallet_key = "test_key";
+            let config = json!({
             "agency_url": host.to_string(),
             "agency_did": agency_did.to_string(),
             "agency_verkey": agency_vk.to_string(),
             "wallet_key": wallet_key.to_string(),
         });
 
-        let result = connect_register_provision(&config.to_string()).unwrap();
-        assert!(result.len() > 0);
+            let result = connect_register_provision(&config.to_string()).unwrap();
+            assert!(result.len() > 0);
+        })
     }
 
     #[ignore]

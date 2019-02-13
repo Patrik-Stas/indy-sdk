@@ -26,16 +26,24 @@ impl Router {
 
     fn add_a2a_route(&mut self, did: String, handler: Recipient<HandleA2AMsg>) {
         trace!("Router::handle_add_route >> {}", did);
+        info!("Router::handle_add_route Adding new A2A route to router! For did {}", did);
         self.routes.insert(did, handler);
     }
 
     fn add_a2conn_route(&mut self, did: String, handler: Recipient<HandleA2ConnMsg>) {
         trace!("Router::add_a2conn_route >> {}", did);
+        info!("Router::handle_add_route Adding new A2Conn route to router! For did {}", did);
         self.pairwise_routes.insert(did, handler);
     }
 
     pub fn route_a2a_msg(&self, did: String, msg: Vec<u8>) -> ResponseFuture<Vec<u8>, Error> {
         trace!("Router::route_a2a_msg >> {:?}, {:?}", did, msg);
+        info!("Router::route_a2a_msg :: Destination DID is {:?}", did);
+        info!("These are known routes:");
+        for (did, actix_actor) in &self.routes {
+            info!("Known did = {}", did);
+        }
+        info!("... that was all the known routes.");
 
         if let Some(addr) = self.routes.get(&did) {
             addr
@@ -82,6 +90,7 @@ impl Handler<AddA2ARoute> for Router {
 
     fn handle(&mut self, msg: AddA2ARoute, _: &mut Self::Context) -> Self::Result {
         trace!("Handler<AddA2ARoute>::handle >> {}", msg.0);
+        info!("Handler<AddA2ARoute>::handle");
         self.add_a2a_route(msg.0, msg.1)
     }
 }
@@ -91,6 +100,7 @@ impl Handler<AddA2ConnRoute> for Router {
 
     fn handle(&mut self, msg: AddA2ConnRoute, _: &mut Self::Context) -> Self::Result {
         trace!("Handler<AddA2ConnRoute>::handle >> {}", msg.0);
+        info!("Handler<AddA2ConnRoute>::handle");
         self.add_a2conn_route(msg.0, msg.1)
     }
 }
@@ -100,6 +110,7 @@ impl Handler<RouteA2AMsg> for Router {
 
     fn handle(&mut self, msg: RouteA2AMsg, _: &mut Self::Context) -> Self::Result {
         trace!("Handler<RouteA2AMsg>::handle >> {:?}", msg);
+        info!("Handler<RouteA2AMsg>::handle");
         self.route_a2a_msg(msg.0, msg.1)
     }
 }
@@ -109,6 +120,7 @@ impl Handler<RouteA2ConnMsg> for Router {
 
     fn handle(&mut self, msg: RouteA2ConnMsg, _: &mut Self::Context) -> Self::Result {
         trace!("Handler<RouteA2ConnMsg>::handle >> {:?}", msg);
+        info!("Handler<RouteA2ConnMsg>::handle");
         self.route_a2conn_msg(msg.0, msg.1)
     }
 }
@@ -118,6 +130,7 @@ impl Handler<RemoteMsg> for Router {
 
     fn handle(&mut self, msg: RemoteMsg, _: &mut Self::Context) -> Self::Result {
         trace!("Handler<RemoteMsg>::handle >> {:?}", msg);
+        info!("Handler<RemoteMsg>::handle");
         self.route_to_requester(msg)
     }
 }

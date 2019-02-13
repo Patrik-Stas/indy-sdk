@@ -37,8 +37,8 @@ impl ForwardAgentConnection {
                   router: Addr<Router>,
                   forward_agent_detail: ForwardAgentDetail,
                   wallet_storage_config: WalletStorageConfig) -> BoxedFuture<(String, String), Error> {
-        trace!("ForwardAgentConnection::create >> {:?}, {:?}, {:?}, {:?}, {:?}",
-               wallet_handle, their_did, their_verkey, forward_agent_detail, wallet_storage_config);
+        info!("ForwardAgentConnection::create >> {:?}, {:?}, {:?}, {:?}, {:?}",
+              wallet_handle, their_did, their_verkey, forward_agent_detail, wallet_storage_config);
 
         future::ok(())
             .and_then(move |_| {
@@ -177,6 +177,7 @@ impl ForwardAgentConnection {
     fn _handle_a2a_msg(&mut self,
                        msg: Vec<u8>) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgentConnection::_handle_a2a_msg >> {:?}", msg);
+        info!("ForwardAgentConnection::_handle_a2a_msg");
 
         future::ok(())
             .into_actor(self)
@@ -205,6 +206,7 @@ impl ForwardAgentConnection {
 
     fn _sign_up(&mut self, msg: SignUp) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgentConnection::_sign_up >> {:?}", msg);
+        info!("ForwardAgentConnection::_sign_up");
 
         if self.state.is_signed_up {
             return err_act!(self, err_msg("Already signed up"));
@@ -220,10 +222,20 @@ impl ForwardAgentConnection {
                         .map_err(|err| err.context("Can't serialize connection state."))
                 });
 
-                pairwise::set_pairwise_metadata(slf.wallet_handle, &slf.their_did, &metadata)
+                let return_box = pairwise::set_pairwise_metadata(slf.wallet_handle, &slf.their_did, &metadata)
                     .map_err(|err| err.context("Can't store connection pairwise.").into())
                     .into_actor(slf)
-                    .into_box()
+                    .into_box();
+//                pairwise::get_pairwise(slf.wallet_handle, &slf.their_did);
+                // TODO: Throws error like: thread '<unnamed>' panicked at 'called `Result::unwrap()` on an `Err` value: Ok("{\"my_did\":\"74pDpF3grBL2C2ugfMPE4u\",\"metadata\":\"{\\\"is_signed_up\\\":true,\\\"agent\\\":null}\"}")', src/libcore/result.rs:1009:5
+//                    .map(|pairwise_info| {info!("after signup, pairwise_info == {:#?}", pairwise_info)})
+//                    .map_err(|err| err.context("Can't get pairwise info.").into());
+//                    .map(|response| {
+//                        response.status().is_ok()
+//                    });
+
+                return return_box;
+
             })
             .and_then(|_, slf, _| {
                 let msgs = vec![A2AMessage::SignedUp(SignedUp {})];
@@ -237,6 +249,8 @@ impl ForwardAgentConnection {
 
     fn _create_agent(&mut self, msg: CreateAgent) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgentConnection::_create_agent >> {:?}", msg);
+        info!("ForwardAgentConnection::_create_agent");
+
 
         if !self.state.is_signed_up {
             return err_act!(self, err_msg("Sign up is required."));
@@ -294,6 +308,7 @@ impl Handler<HandleA2AMsg> for ForwardAgentConnection {
 
     fn handle(&mut self, msg: HandleA2AMsg, _: &mut Self::Context) -> Self::Result {
         trace!("Handler<HandleA2AMsg>::handle >> {:?}", msg);
+        info!("Handler<HandleA2AMsg>::handle");
         self._handle_a2a_msg(msg.0)
     }
 }
