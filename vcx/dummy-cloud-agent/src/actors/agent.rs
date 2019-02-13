@@ -33,11 +33,13 @@ impl Agent {
                   router: Addr<Router>,
                   forward_agent_detail: ForwardAgentDetail,
                   wallet_storage_config: WalletStorageConfig) -> BoxedFuture<(String, String, String, String), Error> {
-        trace!("Agent::create >> {:?}, {:?}, {:?}, {:?}",
+        info!("Agent::create >> {:?}, {:?}, {:?}, {:?}",
                owner_did, owner_verkey, forward_agent_detail, wallet_storage_config);
 
         let wallet_id = rand::rand_string(10);
         let wallet_key = rand::rand_string(10);
+        info!("Created wallet for the new agent. ID={} Wallet key={}", wallet_id, wallet_key);
+
 
         let wallet_config = json!({
                     "id": wallet_id.clone(),
@@ -69,6 +71,7 @@ impl Agent {
                     .map_err(|err| err.context("Can't get Agent did key").into())
             })
             .and_then(move |(wallet_handle, did, verkey)| {
+                info!("For the agent wallet we created did={} verkey={}", did, verkey);
                 let agent = Agent {
                     wallet_handle,
                     verkey: verkey.clone(),

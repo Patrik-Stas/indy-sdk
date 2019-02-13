@@ -10,6 +10,7 @@ use indy::crypto;
 
 pub fn prep_msg(sender_vk: &str, recipient_vk: &str, msg: &[u8]) -> Result<Vec<u8>, u32> {
     if settings::test_indy_mode_enabled() {
+        warn!("Mocked libindy RC!");
         let rc = mock_libindy_rc();
         if rc != 0 { return Err(rc); };
         return Ok(Vec::from(msg).to_owned());

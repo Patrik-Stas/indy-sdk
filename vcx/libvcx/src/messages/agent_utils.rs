@@ -129,7 +129,6 @@ pub struct Config {
 pub fn connect_register_provision(config: &str) -> Result<String, u32> {
     trace!("connect_register_provision >>> config: {:?}", config);
 
-    trace!("***Registering with agency");
     let my_config: Config = serde_json::from_str(&config).or(Err(error::INVALID_CONFIGURATION.code_num))?;
 
     let wallet_name = my_config.wallet_name.unwrap_or(settings::DEFAULT_WALLET_NAME.to_string());
@@ -166,6 +165,7 @@ pub fn connect_register_provision(config: &str) -> Result<String, u32> {
     let path = my_config.path.unwrap_or(String::from("<CHANGE_ME>"));
 
     let (my_did, my_vk) = create_and_store_my_did(my_config.agent_seed.as_ref().map(String::as_str))?;
+    info!("my institution did = {}  my institution vk = {} ", my_did, my_vk);
 
     let (issuer_did, issuer_vk) = if my_config.enterprise_seed != my_config.agent_seed {
         create_and_store_my_did(my_config.enterprise_seed.as_ref().map(String::as_str))?
@@ -176,7 +176,7 @@ pub fn connect_register_provision(config: &str) -> Result<String, u32> {
     settings::set_config_value(settings::CONFIG_INSTITUTION_DID, &my_did);
     settings::set_config_value(settings::CONFIG_SDK_TO_REMOTE_VERKEY, &my_vk);
 
-    trace!("Connecting to Agency");
+    info!("Connecting to Agency using protocol {:#?}", &my_config.protocol_type);
 
     let (agent_did, agent_vk) = match my_config.protocol_type {
         settings::ProtocolTypes::V1 => onboarding_v1(&my_did, &my_vk, &my_config.agency_did)?,
@@ -366,11 +366,13 @@ pub fn update_agent_info_v2(to_did: &str, com_method: ComMethod) -> Result<(), u
 }
 
 pub fn send_message_to_agency(message: &A2AMessage, did: &str) -> Result<Vec<A2AMessage>, u32> {
+    info!("send_message_to_agency. Message = {:#?}. Agency did = {:}", message, did);
     let data = prepare_message_for_agency(message, &did)?;
 
     let response = httpclient::post_u8(&data).or(Err(error::INVALID_HTTP_RESPONSE.code_num))?;
-
-    parse_response_from_agency(&response)
+    let parsed = parse_response_from_agency(&response);
+    info!("Got back response {:#?}", &parsed);
+    parsed
 }
 
 #[cfg(test)]

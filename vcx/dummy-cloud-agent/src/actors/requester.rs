@@ -25,6 +25,7 @@ impl Requester {
 
     pub fn send_message(&self, msg: Vec<u8>, endpoint: String) -> ResponseFuture<(), Error> {
         trace!("Requester::send_message >> {:?}, {:?}", msg, endpoint);
+        info!("Requester::send_message >> endpoint = {:?}", endpoint);
 
         let request = match self.build_request(msg, &endpoint) {
             Ok(req) => req,
@@ -63,6 +64,7 @@ impl Handler<RemoteMsg> for Requester {
 
     fn handle(&mut self, msg: RemoteMsg, _: &mut Self::Context) -> Self::Result {
         trace!("Handler<SendRemoteMessage>::handle >> {:?}", msg);
+        info!("Handler<SendRemoteMessage>::handle");
         self.send_message(msg.body, msg.endpoint)
     }
 }

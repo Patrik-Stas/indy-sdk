@@ -14,6 +14,7 @@ pub fn post_u8(body_content: &Vec<u8>) -> Result<Vec<u8>, &'static str> {
     let endpoint = settings::get_config_value(settings::CONFIG_AGENCY_ENDPOINT).or(Err("Invalid Configuration"))?;
     let url = format!("{}/agency/msg", endpoint);
 
+    info!("Patrik post_u8");
     if settings::test_agency_mode_enabled() {
         return Ok(NEXT_U8_RESPONSE.lock().unwrap().pop().unwrap_or(Vec::new()));
     }

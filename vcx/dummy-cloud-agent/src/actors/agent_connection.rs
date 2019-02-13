@@ -146,7 +146,7 @@ impl AgentConnection {
                    forward_agent_detail: &ForwardAgentDetail,
                    router: Addr<Router>,
                    agent_configs: HashMap<String, String>) -> BoxedFuture<(), Error> {
-        trace!("AgentConnection::restore >> {:?}", wallet_handle);
+        info!("AgentConnection::restore >> wallet = {:?}", wallet_handle);
 
         let owner_did = owner_did.to_string();
         let owner_verkey = owner_verkey.to_string();
@@ -201,7 +201,7 @@ impl AgentConnection {
 
     fn handle_a2a_msg(&mut self,
                       msg: Vec<u8>) -> ResponseActFuture<Self, Vec<u8>, Error> {
-        trace!("AgentConnection::handle_a2a_msg >> {:?}", msg);
+        info!("AgentConnection::handle_a2a_msg >>");
 
         future::ok(())
             .into_actor(self)
@@ -219,6 +219,7 @@ impl AgentConnection {
                     .into_actor(slf)
             })
             .and_then(|(sender_vk, msg, msgs), slf, _| {
+                info!("AgentConnection::handle_a2a_msg >> Handling Message: {:#?}", msg);
                 match msg {
                     Some(A2AMessage::Version1(msg)) => {
                         match msg {
@@ -260,7 +261,7 @@ impl AgentConnection {
                              msg: CreateMessage,
                              mut tail: Vec<A2AMessage>,
                              sender_verkey: &str) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
-        trace!("AgentConnection::handle_create_message >> {:?}, {:?}, {:?}",
+        info!("AgentConnection::handle_create_message >> msg = {:?},  tail = {:?}, sender_vk = {:?}",
                msg, tail, sender_verkey);
 
         let CreateMessage { mtype, send_msg, reply_to_msg_id, uid } = msg;
@@ -305,7 +306,7 @@ impl AgentConnection {
     fn handle_connection_request_message(&mut self,
                                          msg: ConnectionRequest,
                                          sender_verkey: &str) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
-        trace!("AgentConnection::handle_connection_request_message >> {:?}, {:?}", msg, sender_verkey);
+        info!("AgentConnection::handle_connection_request_message >> msg = {:?}, sender_vk = {:?}", msg, sender_verkey);
 
         let send_msg = msg.send_msg;
         let reply_to_msg_id = msg.reply_to_msg_id.clone();
@@ -328,7 +329,7 @@ impl AgentConnection {
     fn handle_create_connection_request(&mut self,
                                         msg_detail: ConnectionRequestMessageDetail,
                                         sender_verkey: String) -> ResponseActFuture<Self, (String, Vec<A2AMessage>), Error> {
-        trace!("AgentConnection::handle_create_connection_request >> {:?}, {:?}", msg_detail, sender_verkey);
+        info!("AgentConnection::handle_create_connection_request >> msg_detail = {:?}, sender_verkey = {:?}", msg_detail, sender_verkey);
 
         ftry_act!(self, self.validate_connection_request(&msg_detail, &sender_verkey));
 
@@ -363,7 +364,7 @@ impl AgentConnection {
     fn handle_connection_request_answer_message(&mut self,
                                                 msg: ConnectionRequestAnswer,
                                                 sender_verkey: &str) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
-        trace!("AgentConnection::handle_connection_request_answer_message >> {:?}, {:?}", msg, sender_verkey);
+        trace!("AgentConnection::handle_connection_request_answer_message >> smg = {:?}, sender_vk = {:?}", msg, sender_verkey);
 
         let send_msg = msg.send_msg;
         let reply_to_msg_id = msg.reply_to_msg_id.clone();
@@ -475,8 +476,7 @@ impl AgentConnection {
     }
 
     fn handle_send_messages(&mut self, msg: SendMessages) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
-        trace!("AgentConnection::handle_send_messages >> {:?}",
-               msg);
+        info!("AgentConnection::handle_send_messages >> {:?}", msg);
 
         let SendMessages { uids } = msg;
 
@@ -489,6 +489,7 @@ impl AgentConnection {
 
     fn handle_get_messages(&mut self, msg: GetMessages) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
         trace!("AgentConnection::handle_get_messages >> {:?}", msg);
+        info!("AgentConnection::handle_get_messages");
 
         let messages = self.get_messages(msg);
 
@@ -525,8 +526,7 @@ impl AgentConnection {
     }
 
     fn handle_update_connection_status(&mut self, msg: UpdateConnectionStatus) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
-        trace!("AgentConnection::handle_update_connection_status >> {:?}",
-               msg);
+        info!("AgentConnection::handle_update_connection_status >> {:?}", msg);
 
         let UpdateConnectionStatus { status_code } = msg;
 
@@ -545,8 +545,7 @@ impl AgentConnection {
     }
 
     fn handle_update_message_status(&mut self, msg: UpdateMessageStatus) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
-        trace!("AgentConnection::handle_update_message_status >> {:?}",
-               msg);
+        info!("AgentConnection::handle_update_message_status >> {:?}", msg);
 
         self.update_messages_status(msg)
             .map(|(uids, status_code)| {
@@ -563,14 +562,14 @@ impl AgentConnection {
 
     fn handle_agent2conn_message(&mut self,
                                  msg: A2ConnMessage) -> ResponseFuture<A2ConnMessage, Error> {
-        trace!("AgentConnection::handle_agent_to_connection_message >> {:?}", msg);
+        info!("AgentConnection::handle_agent_to_connection_message");
 
         match msg {
             A2ConnMessage::GetMessages(msg) => {
                 let msg = A2ConnMessage::MessagesByConnection(
                     MessagesByConnection {
                         did: self.user_pairwise_did.clone(),
-                        msgs: self.get_messages(msg)
+                        msgs: self.get_messages(msg),
                     });
                 ok!(msg)
             }
@@ -579,7 +578,7 @@ impl AgentConnection {
                 let msg = A2ConnMessage::MessageStatusUpdatedByConnection(
                     UidByConnection {
                         uids,
-                        pairwise_did: self.user_pairwise_did.clone()
+                        pairwise_did: self.user_pairwise_did.clone(),
                     });
                 ok!(msg)
             }
@@ -588,8 +587,7 @@ impl AgentConnection {
     }
 
     fn update_messages_status(&mut self, msg: UpdateMessageStatus) -> Result<(Vec<String>, MessageStatusCode), Error> {
-        trace!("AgentConnection::update_messages_status >> {:?}",
-               msg);
+        info!("AgentConnection::update_messages_status >> {:?}", msg);
 
         let UpdateMessageStatus { uids, status_code } = msg;
 
@@ -612,7 +610,7 @@ impl AgentConnection {
     fn sender_handle_create_connection_request_answer(&mut self,
                                                       msg_detail: ConnectionRequestAnswerMessageDetail,
                                                       reply_to_msg_id: String) -> ResponseActFuture<Self, (String, Vec<A2AMessage>), Error> {
-        trace!("AgentConnection::initiator_handle_create_connection_request_answer >> {:?}, {:?}",
+        info!("AgentConnection::initiator_handle_create_connection_request_answer >> {:?}, {:?}",
                msg_detail, reply_to_msg_id);
 
         let key_dlg_proof = ftry_act!(self, {
@@ -655,7 +653,7 @@ impl AgentConnection {
                     forward_agent_detail: msg_detail.sender_agency_detail.clone(),
                     agent_detail: AgentDetail {
                         did: msg_detail.sender_detail.did.clone(),
-                        verkey: msg_detail.sender_detail.verkey.clone()
+                        verkey: msg_detail.sender_detail.verkey.clone(),
                     },
                     agent_key_dlg_proof: msg_detail.sender_detail.agent_key_dlg_proof.clone(),
                 });
@@ -692,7 +690,7 @@ impl AgentConnection {
                                                        msg_detail: ConnectionRequestAnswerMessageDetail,
                                                        reply_to_msg_id: String,
                                                        msg_uid: Option<String>) -> ResponseActFuture<Self, (String, Vec<A2AMessage>), Error> {
-        trace!("AgentConnection::receipt_handle_create_connection_request_answer >> {:?}, {:?}, {:?}",
+        info!("AgentConnection::receipt_handle_create_connection_request_answer >> {:?}, {:?}, {:?}",
                msg_detail, reply_to_msg_id, msg_uid);
 
         future::ok(())
@@ -715,7 +713,7 @@ impl AgentConnection {
                     forward_agent_detail: msg_detail.sender_agency_detail.clone(),
                     agent_detail: AgentDetail {
                         did: msg_detail.sender_detail.did.clone(),
-                        verkey: msg_detail.sender_detail.verkey.clone()
+                        verkey: msg_detail.sender_detail.verkey.clone(),
                     },
                     agent_key_dlg_proof: msg_detail.sender_detail.agent_key_dlg_proof.clone(),
                 });
@@ -761,6 +759,7 @@ impl AgentConnection {
                                          sending_data: Option<HashMap<String, Option<String>>>) -> InternalMessage {
         trace!("AgentConnection::create_and_store_internal_message >> {:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?}",
                uid, mtype, status_code, sender_did, ref_msg_id, payload, sending_data);
+        info!("AgentConnection::create_and_store_internal_message >> ");
 
         let msg = InternalMessage::new(uid,
                                        mtype,
@@ -1065,8 +1064,7 @@ impl AgentConnection {
     }
 
     fn send_invite_answer_message(&mut self, message: InternalMessage, reply_to: Option<String>) -> ResponseFuture<(), Error> {
-        trace!("AgentConnection::send_invite_answer_message >> {:?}, {:?}",
-               message, reply_to);
+        info!("AgentConnection::send_invite_answer_message >> {:?}, {:?}", message, reply_to);
 
         let reply_to = ftry!(reply_to.ok_or(err_msg("Missed required field `reply_to_msg_id`.")));
 
@@ -1081,8 +1079,7 @@ impl AgentConnection {
     }
 
     fn send_general_message(&self, message: InternalMessage, reply_to: Option<&str>) -> ResponseFuture<(), Error> {
-        trace!("AgentConnection::send_general_message >> {:?}, {:?}",
-               message, reply_to);
+        info!("AgentConnection::send_general_message >> {:?}, {:?}", message, reply_to);
 
         if message.sender_did == self.user_pairwise_did {
             // TODO: support message delivery statuses?
@@ -1116,7 +1113,7 @@ impl AgentConnection {
     }
 
     fn prepare_remote_message(&self, message: Vec<A2AMessage>) -> Result<Vec<u8>, Error> {
-        trace!("AgentConnection::prepare_remote_message >> {:?}", message);
+        info!("AgentConnection::prepare_remote_message >> {:?}", message);
 
         let remote_connection_detail = self.state.remote_connection_detail.as_ref()
             .ok_or(err_msg("Missed Remote Connection Details."))?;
@@ -1144,7 +1141,7 @@ impl AgentConnection {
 
         let payload_msg = Payload {
             type_: PayloadTypes::build(PayloadKinds::from(type_)),
-            msg: to_i8(&msg)
+            msg: to_i8(&msg),
         };
 
         rmp_serde::to_vec_named(&payload_msg)
@@ -1295,7 +1292,7 @@ impl AgentConnection {
                         reply_to_msg_id: reply_to.map(String::from),
                         msg,
                         title,
-                        detail
+                        detail,
                     };
 
                     vec![A2AMessage::Version2(A2AMessageV2::SendRemoteMessage(msg))]
@@ -1347,7 +1344,7 @@ impl Handler<HandleA2ConnMsg> for AgentConnection {
 
 enum MessageHandlerRole {
     Owner,
-    Remote
+    Remote,
 }
 
 #[cfg(test)]
@@ -1358,7 +1355,9 @@ mod tests {
 
     #[test]
     fn agent_create_connection_request_works() {
+        std::env::set_var("RUST_LOG", "warn");
         run_agent_test(|(e_wallet_handle, agent_did, agent_verkey, agent_pw_did, agent_pw_vk, forward_agent)| {
+            warn!("is this working????");
             future::ok(())
                 .and_then(move |_| {
                     let msg = compose_create_connection_request(e_wallet_handle,

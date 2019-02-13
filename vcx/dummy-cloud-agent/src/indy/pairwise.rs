@@ -22,6 +22,7 @@ pub fn is_pairwise_exists(wallet_handle: i32, their_did: &str) -> Box<Future<Ite
 }
 
 pub fn create_pairwise(wallet_handle: i32, their_did: &str, my_did: &str, metadata: Option<&str>) -> Box<Future<Item=(), Error=IndyError>> {
+    info!("pairwise::create_pairwise their_did={:} my_did={:} metadata={:}", their_did, my_did, metadata.unwrap());
     pairwise::create_pairwise(wallet_handle, their_did, my_did, metadata)
         .into_box()
 }

@@ -46,6 +46,9 @@ pub(crate) mod indy;
 pub(crate) mod server;
 
 fn main() {
+    env::set_var("RUST_LOG", "info");
+    env::set_var("RUST_BACKTRACE", "1");
+
     indy::logger::set_default_logger(None)
         .expect("Can't init indy logger");
 
