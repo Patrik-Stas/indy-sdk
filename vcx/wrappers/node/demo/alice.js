@@ -10,7 +10,8 @@ import logger from './logger'
 const utime = Math.floor(new Date() / 1000);
 
 const provisionConfig = {
-    'agency_url': 'http://localhost:8080',
+    // 'agency_url': 'http://localhost:8080',
+    'agency_url': 'http://52.212.123.111:8080',
     'agency_did': 'VsKV7grR1BUE29mG2Fm2kX',
     'agency_verkey': 'Hezce2UWMZ3wUhVkh2LfKSs8nDzWwzs2Win7EzNN3YaR',
     'wallet_name': `node_vcx_demo_alice_wallet_${utime}`,
@@ -19,7 +20,7 @@ const provisionConfig = {
     'enterprise_seed': '000000000000000000000000Trustee1'
 };
 
-const logLevel = 'warn';
+const logLevel = 'trace';
 
 async function run() {
     await demoCommon.initLibNullPay();
@@ -31,6 +32,7 @@ async function run() {
     let config = await demoCommon.provisionAgentInAgency(provisionConfig);
 
     logger.info("#2 Initialize libvcx with new configuration");
+    logger.info(`${JSON.stringify(config)}`);
     await demoCommon.initVcxWithProvisionedAgentConfig(config);
 
     logger.info("#9 Input faber.py invitation details");

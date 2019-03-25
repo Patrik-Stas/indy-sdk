@@ -33,7 +33,7 @@ impl Agent {
                   router: Addr<Router>,
                   forward_agent_detail: ForwardAgentDetail,
                   wallet_storage_config: WalletStorageConfig) -> BoxedFuture<(String, String, String, String), Error> {
-        trace!("Agent::create >> {:?}, {:?}, {:?}, {:?}",
+        debug!("Agent::create >> {:?}, {:?}, {:?}, {:?}",
                owner_did, owner_verkey, forward_agent_detail, wallet_storage_config);
 
         let wallet_id = format!("dummy_{}_{}", owner_did, rand::rand_string(10));
@@ -99,7 +99,7 @@ impl Agent {
                    router: Addr<Router>,
                    forward_agent_detail: ForwardAgentDetail,
                    wallet_storage_config: WalletStorageConfig) -> BoxedFuture<(), Error> {
-        trace!("Agent::restore >> {:?}, {:?}, {:?}, {:?}, {:?}, {:?}",
+        debug!("Agent::restore >> {:?}, {:?}, {:?}, {:?}, {:?}, {:?}",
                wallet_id, did, owner_did, owner_verkey, forward_agent_detail, wallet_storage_config);
 
         let wallet_config = json!({
@@ -178,7 +178,7 @@ impl Agent {
                             forward_agent_detail: &ForwardAgentDetail,
                             router: Addr<Router>,
                             agent_configs: HashMap<String, String>) -> ResponseFuture<(), Error> {
-        trace!("Agent::_restore_connections >> {:?}, {:?}, {:?}, {:?}",
+        debug!("Agent::_restore_connections >> {:?}, {:?}, {:?}, {:?}",
                wallet_handle, owner_did, owner_verkey, forward_agent_detail);
 
         let owner_did = owner_did.to_string();
@@ -213,6 +213,7 @@ impl Agent {
     fn handle_a2a_msg(&mut self,
                       msg: Vec<u8>) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("Agent::handle_a2a_msg >> {:?}", msg);
+        debug!("Agent::handle_a2a_msg");
 
         future::ok(())
             .into_actor(self)
@@ -250,7 +251,7 @@ impl Agent {
     fn handle_agent_msg(&mut self,
                         sender_vk: String,
                         msg: A2AMessage) -> ResponseActFuture<Self, Vec<u8>, Error> {
-        trace!("Agent::handle_agent_msg >> {:?}, {:?}", sender_vk, msg);
+        debug!("Agent::handle_agent_msg >> {:?}, {:?}", sender_vk, msg);
 
         match msg {
             A2AMessage::Version1(msg) => self.handle_agent_msg_v1(sender_vk, msg),
@@ -262,6 +263,7 @@ impl Agent {
                            sender_vk: String,
                            msg: A2AMessageV1) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("Agent::handle_agent_msg_v1 >> {:?}, {:?}", sender_vk, msg);
+        debug!("Agent::handle_agent_msg_v1 >> sender_vk: {:?}", sender_vk);
 
         match msg {
             A2AMessageV1::CreateKey(msg) => self.handle_create_key_v1(msg),
@@ -286,6 +288,7 @@ impl Agent {
                            sender_vk: String,
                            msg: A2AMessageV2) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("Agent::handle_agent_msg_v2 >> {:?}, {:?}", sender_vk, msg);
+        debug!("Agent::handle_agent_msg_v2 >> sender_vk: {:?}", sender_vk);
 
         match msg {
             A2AMessageV2::CreateKey(msg) => self.handle_create_key_v2(msg),
@@ -307,7 +310,7 @@ impl Agent {
 
     fn handle_get_messages_by_connections_v1(&mut self,
                                              msg: GetMessagesByConnections) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
-        trace!("Agent::handle_get_messages_by_connections_v1 >> {:?}", msg);
+        debug!("Agent::handle_get_messages_by_connections_v1 >> {:?}", msg);
 
         self.handle_get_messages_by_connections(msg)
             .map(|msgs: Vec<A2ConnMessage>| {
@@ -323,7 +326,7 @@ impl Agent {
 
     fn handle_get_messages_by_connections_v2(&mut self,
                                              msg: GetMessagesByConnections) -> ResponseActFuture<Self, A2AMessageV2, Error> {
-        trace!("Agent::handle_get_messages_by_connections_v2 >> {:?}", msg);
+        debug!("Agent::handle_get_messages_by_connections_v2 >> {:?}", msg);
 
         self.handle_get_messages_by_connections(msg)
             .map(|msgs: Vec<A2ConnMessage>| {
@@ -338,7 +341,7 @@ impl Agent {
 
     fn handle_get_messages_by_connections(&mut self,
                                           msg: GetMessagesByConnections) -> ResponseFuture<Vec<A2ConnMessage>, Error> {
-        trace!("Agent::handle_get_messages_by_connections >> {:?}", msg);
+        debug!("Agent::handle_get_messages_by_connections >> {:?}", msg);
 
         let GetMessagesByConnections { exclude_payload, uids, status_codes, pairwise_dids } = msg;
 
@@ -379,7 +382,7 @@ impl Agent {
 
     fn handle_update_messages_by_connections_v1(&mut self,
                                                 msg: UpdateMessageStatusByConnections) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
-        trace!("Agent::handle_update_messages_by_connections_v1 >> {:?}", msg);
+        debug!("Agent::handle_update_messages_by_connections_v1 >> {:?}", msg);
 
         self.handle_update_messages_by_connections(msg)
             .map(|uids_by_conn: Vec<A2ConnMessage>| {
@@ -395,7 +398,7 @@ impl Agent {
 
     fn handle_update_messages_by_connections_v2(&mut self,
                                                 msg: UpdateMessageStatusByConnections) -> ResponseActFuture<Self, A2AMessageV2, Error> {
-        trace!("Agent::handle_update_messages_by_connections_v2 >> {:?}", msg);
+        debug!("Agent::handle_update_messages_by_connections_v2 >> {:?}", msg);
 
         self.handle_update_messages_by_connections(msg)
             .map(|uids_by_conn: Vec<A2ConnMessage>| {
@@ -411,7 +414,7 @@ impl Agent {
 
     fn handle_update_messages_by_connections(&mut self,
                                              msg: UpdateMessageStatusByConnections) -> ResponseFuture<Vec<A2ConnMessage>, Error> {
-        trace!("Agent::handle_update_messages_by_connections >> {:?}", msg);
+        debug!("Agent::handle_update_messages_by_connections >> {:?}", msg);
 
         let UpdateMessageStatusByConnections { uids_by_conn, status_code } = msg;
 
@@ -468,7 +471,7 @@ impl Agent {
 
     fn handle_create_key_v1(&mut self,
                             msg: CreateKey) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
-        trace!("Agent::handle_create_key_v1 >> {:?}", msg);
+        debug!("Agent::handle_create_key_v1 >> {:?}", msg);
 
         let CreateKey { for_did, for_did_verkey } = msg;
 
@@ -484,7 +487,7 @@ impl Agent {
 
     fn handle_create_key_v2(&mut self,
                             msg: CreateKey) -> ResponseActFuture<Self, A2AMessageV2, Error> {
-        trace!("Agent::handle_create_key_v2 >> {:?}", msg);
+        debug!("Agent::handle_create_key_v2 >> {:?}", msg);
 
         let CreateKey { for_did, for_did_verkey, .. } = msg;
 
@@ -501,7 +504,7 @@ impl Agent {
     fn handle_create_key(&mut self,
                          for_did: &str,
                          for_did_verkey: &str) -> ResponseActFuture<Self, (String, String), Error> {
-        trace!("Agent::handle_create_key >> {:?}, {:?}", for_did, for_did_verkey);
+        debug!("Agent::handle_create_key >> {:?}, {:?}", for_did, for_did_verkey);
 
         let for_did = for_did.to_string();
         let for_did_verkey = for_did_verkey.to_string();

@@ -25,7 +25,7 @@ pub struct ForwardAgent {
 impl ForwardAgent {
     pub fn create_or_restore(config: ForwardAgentConfig,
                              wallet_storage_config: WalletStorageConfig) -> ResponseFuture<Addr<ForwardAgent>, Error> {
-        trace!("ForwardAgent::create_or_restore >> {:?} {:?}", config, wallet_storage_config);
+        debug!("ForwardAgent::create_or_restore >> {:?} {:?}", config, wallet_storage_config);
         let request = Requester::new().start();
         let router = Router::new(request).start();
 
@@ -132,6 +132,7 @@ impl ForwardAgent {
                             wallet_storage_config: WalletStorageConfig,
                             router: Addr<Router>) -> ResponseFuture<(), Error> {
         trace!("ForwardAgent::_restore_connections >> {:?}", wallet_handle);
+        debug!("ForwardAgent::_restore_connections");
 
         future::ok(())
             .and_then(move |_| {
@@ -173,12 +174,14 @@ impl ForwardAgent {
 
     fn _get_endpoint(&self) -> (String, String) {
         trace!("ForwardAgent::_get_endpoint >>");
+        debug!("ForwardAgent::_get_endpoint");
         (self.did.clone(), self.verkey.clone())
     }
 
     fn _forward_a2a_msg(&mut self,
                         msg: Vec<u8>) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgent::_forward_a2a_msg >> {:?}", msg);
+        debug!("ForwardAgent::_forward_a2a_msg");
 
         future::ok(())
             .into_actor(self)
@@ -215,6 +218,7 @@ impl ForwardAgent {
     fn _handle_a2a_msg(&mut self,
                        msg: Vec<u8>) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgent::_handle_a2a_msg >> {:?}", msg);
+        debug!("ForwardAgent::_handle_a2a_msg");
 
         future::ok(())
             .into_actor(self)
@@ -241,6 +245,7 @@ impl ForwardAgent {
                    sender_vk: String,
                    msg: Connect) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgent::_connect_v1 >> {:?}, {:?}", sender_vk, msg);
+        debug!("ForwardAgent::_connect_v1 >> senderVerkey: {:?}", sender_vk);
 
         let Connect { from_did: their_did, from_did_verkey: their_verkey } = msg;
 
@@ -262,6 +267,7 @@ impl ForwardAgent {
                    sender_vk: String,
                    msg: Connect) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgent::_connect_v2 >> {:?}, {:?}", sender_vk, msg);
+        debug!("ForwardAgent::_connect_v2 >> senderVerkey: {:?}", sender_vk);
 
         let Connect { from_did: their_did, from_did_verkey: their_verkey, .. } = msg;
 
@@ -283,7 +289,7 @@ impl ForwardAgent {
                 sender_vk: String,
                 their_did: String,
                 their_verkey: String) -> ResponseActFuture<Self, (String, String), Error> {
-        trace!("ForwardAgent::_connect >> {:?}, {:?}, {:?}", sender_vk, their_did, their_verkey);
+        debug!("ForwardAgent::_connect >> senderVerkey: {:?}, theirDid {:?}, theirVerkey: {:?}", sender_vk, their_did, their_verkey);
 
         if their_verkey != sender_vk {
             return err_act!(self, err_msg("Inconsistent sender and connection verkeys"));

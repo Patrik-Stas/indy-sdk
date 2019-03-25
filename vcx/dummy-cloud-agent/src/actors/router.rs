@@ -26,16 +26,19 @@ impl Router {
 
     fn add_a2a_route(&mut self, did: String, handler: Recipient<HandleA2AMsg>) {
         trace!("Router::handle_add_route >> {}", did);
+        debug!("Router::handle_add_route >> {}", did);
         self.routes.insert(did, handler);
     }
 
     fn add_a2conn_route(&mut self, did: String, handler: Recipient<HandleA2ConnMsg>) {
         trace!("Router::add_a2conn_route >> {}", did);
+        debug!("Router::add_a2conn_route >> {}", did);
         self.pairwise_routes.insert(did, handler);
     }
 
     pub fn route_a2a_msg(&self, did: String, msg: Vec<u8>) -> ResponseFuture<Vec<u8>, Error> {
         trace!("Router::route_a2a_msg >> {:?}, {:?}", did, msg);
+        debug!("Router::route_a2a_msg >> to {:?}", did);
 
         if let Some(addr) = self.routes.get(&did) {
             addr
@@ -49,7 +52,7 @@ impl Router {
     }
 
     pub fn route_a2conn_msg(&self, did: String, msg: A2ConnMessage) -> ResponseFuture<A2ConnMessage, Error> {
-        trace!("Router::route_a2conn_msg >> {:?}, {:?}", did, msg);
+        debug!("Router::route_a2conn_msg >> {:?}, {:?}", did, msg);
 
         if let Some(addr) = self.pairwise_routes.get(&did) {
             addr
@@ -63,7 +66,7 @@ impl Router {
     }
 
     pub fn route_to_requester(&self, msg: RemoteMsg) -> ResponseFuture<(), Error> {
-        trace!("Router::route_to_requester >> {:?}", msg);
+        debug!("Router::route_to_requester >> {:?}", msg);
 
         self.requester
             .send(msg)

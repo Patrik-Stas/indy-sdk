@@ -19,7 +19,7 @@ export async function provisionAgentInAgency(config) {
 export async function initVcxWithProvisionedAgentConfig(config) {
     config['institution_name'] = 'faber';
     config['institution_logo_url'] = 'http://robohash.org/234';
-    config['genesis_path'] = `${__dirname}/docker.txn` ;
+    config['genesis_path'] = `${__dirname}/testnet.txn` ;
     await initVcxWithConfig(JSON.stringify(config));
 }
 
