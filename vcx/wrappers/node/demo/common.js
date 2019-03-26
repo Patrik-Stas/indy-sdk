@@ -16,10 +16,10 @@ export async function provisionAgentInAgency(config) {
     return JSON.parse(await provisionAgent(JSON.stringify(config)));
 }
 
-export async function initVcxWithProvisionedAgentConfig(config) {
+export async function initVcxWithProvisionedAgentConfig(config, genesisPath) {
     config['institution_name'] = 'faber';
     config['institution_logo_url'] = 'http://robohash.org/234';
-    config['genesis_path'] = `${__dirname}/testnet.txn` ;
+    config['genesis_path'] = `${__dirname}/docker.txn` ;
     await initVcxWithConfig(JSON.stringify(config));
 }
 

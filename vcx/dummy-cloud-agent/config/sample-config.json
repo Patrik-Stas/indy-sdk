@@ -6,8 +6,8 @@
     "did": "VsKV7grR1BUE29mG2Fm2kX",
     "did_seed": "0000000000000000000000000Forward",
     "endpoint": "http://localhost:9090",
-    "wallet_id": "forward_agent_wallet_id",
-    "wallet_passphrase": "forward_agent_wallet_passphrase"
+    "wallet_id": "forward_agent_wallet",
+    "wallet_passphrase": "123"
   },
   "server": {
     "addresses": [

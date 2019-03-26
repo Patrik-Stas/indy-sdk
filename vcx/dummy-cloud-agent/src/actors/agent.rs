@@ -37,7 +37,7 @@ impl Agent {
                owner_did, owner_verkey, forward_agent_detail, wallet_storage_config);
 
         let wallet_id = format!("dummy_{}_{}", owner_did, rand::rand_string(10));
-        let wallet_key = rand::rand_string(10);
+        let wallet_key = format!("123"); //rand::rand_string(10);
 
         let wallet_config = json!({
                     "id": wallet_id.clone(),
