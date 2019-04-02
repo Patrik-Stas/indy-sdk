@@ -28,6 +28,11 @@ pub struct Agent {
 }
 
 impl Agent {
+
+    pub fn agent_name(&self) -> String{
+        return self.owner_did.clone()
+    }
+
     pub fn create(owner_did: &str,
                   owner_verkey: &str,
                   router: Addr<Router>,
@@ -53,6 +58,11 @@ impl Agent {
         let owner_did = owner_did.to_string();
         let owner_verkey = owner_verkey.to_string();
 
+        let forward_did : String = forward_agent_detail.did.clone();
+        let did_info = json!({"forward_agent_did": forward_did, "owner_did": owner_did}).to_string();
+        debug!("Agent::create >> owner_did = {:?}", &owner_did);
+        debug!("Agent::create >> forward_did = {:?}", forward_did);
+        debug!("Agent::create >> did_info = {:?}", did_info);
         future::ok(())
             .and_then(move |_|
                 wallet::create_wallet(&wallet_config, &wallet_credentials)
@@ -63,10 +73,16 @@ impl Agent {
                 wallet::open_wallet(wallet_config.as_ref(), wallet_credentials.as_ref())
                     .map_err(|err| err.context("Can't open Agent wallet.`").into())
             })
-            .and_then(|wallet_handle| {
+            .and_then(move |wallet_handle| {
                 did::create_and_store_my_did(wallet_handle, "{}")
                     .map(move |(did, verkey)| (wallet_handle, did, verkey))
                     .map_err(|err| err.context("Can't get Agent did key").into())
+            })
+            .and_then(move |(wallet_handle, did, verkey)| {
+                debug!("Created did {:?}, will adde metadata {:?}", did, &did_info);
+                did::set_did_metadata(wallet_handle, &did, did_info.as_str())
+                    .map(move |_res| (wallet_handle, did, verkey))
+                    .map_err(|err| err.context("Can't store config data as DID metadata.").into())
             })
             .and_then(move |(wallet_handle, did, verkey)| {
                 let agent = Agent {
@@ -287,8 +303,8 @@ impl Agent {
     fn handle_agent_msg_v2(&mut self,
                            sender_vk: String,
                            msg: A2AMessageV2) -> ResponseActFuture<Self, Vec<u8>, Error> {
-        trace!("Agent::handle_agent_msg_v2 >> {:?}, {:?}", sender_vk, msg);
-        debug!("Agent::handle_agent_msg_v2 >> sender_vk: {:?}", sender_vk);
+        trace!("Agent::handle_agent_msg_v2 {}>> {:?}, {:?}", self.agent_name(), sender_vk, msg);
+        debug!("Agent::handle_agent_msg_v2 {}>> sender_vk: {:?}", self.agent_name(), sender_vk);
 
         match msg {
             A2AMessageV2::CreateKey(msg) => self.handle_create_key_v2(msg),
@@ -310,7 +326,7 @@ impl Agent {
 
     fn handle_get_messages_by_connections_v1(&mut self,
                                              msg: GetMessagesByConnections) -> ResponseActFuture<Self, Vec<A2AMessage>, Error> {
-        debug!("Agent::handle_get_messages_by_connections_v1 >> {:?}", msg);
+        debug!("Agent {}::handle_get_messages_by_connections_v1 >> {:?}", self.agent_name(), msg);
 
         self.handle_get_messages_by_connections(msg)
             .map(|msgs: Vec<A2ConnMessage>| {
@@ -326,7 +342,7 @@ impl Agent {
 
     fn handle_get_messages_by_connections_v2(&mut self,
                                              msg: GetMessagesByConnections) -> ResponseActFuture<Self, A2AMessageV2, Error> {
-        debug!("Agent::handle_get_messages_by_connections_v2 >> {:?}", msg);
+        debug!("Agent {}::handle_get_messages_by_connections_v2 >> {:?}", self.agent_name(), msg);
 
         self.handle_get_messages_by_connections(msg)
             .map(|msgs: Vec<A2ConnMessage>| {
@@ -341,9 +357,10 @@ impl Agent {
 
     fn handle_get_messages_by_connections(&mut self,
                                           msg: GetMessagesByConnections) -> ResponseFuture<Vec<A2ConnMessage>, Error> {
-        debug!("Agent::handle_get_messages_by_connections >> {:?}", msg);
+        debug!("Agent {}::handle_get_messages_by_connections >> {:?}", self.agent_name(), msg);
 
         let GetMessagesByConnections { exclude_payload, uids, status_codes, pairwise_dids } = msg;
+        debug!("Agent {}::handle_get_messages_by_connections >> Looking for messages from pairwise DIDs: {:?}", self.agent_name(), pairwise_dids);
 
         let router = self.router.clone();
         let wallet_handle = self.wallet_handle.clone();
@@ -353,11 +370,13 @@ impl Agent {
         future::ok(())
             .and_then(move |_| Self::get_pairwise_list(wallet_handle).into_box())
             .and_then(move |pairwise_list| {
+                debug!("Agent::handle_get_messages_by_connections >> get pairwise list pairwise_list before filtering {:?}", pairwise_list);
                 let pairwises: Vec<_> = pairwise_list
                     .into_iter()
                     .filter(|pairwise| pairwise_dids.is_empty() || pairwise_dids.contains(&pairwise.their_did))
                     .collect();
 
+                debug!("Agent::handle_get_messages_by_connections >> after filtering, these are relevant pairwises: {:?}", pairwises);
                 if !pairwise_dids.is_empty() && pairwises.is_empty() {
                     return err!(err_msg("Pairwise DID not found.")).into_box();
                 }

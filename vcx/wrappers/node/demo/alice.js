@@ -7,25 +7,14 @@ import sleepPromise from 'sleep-promise'
 import * as demoCommon from './common'
 import logger from './logger'
 import {createStorage} from './storage'
+import axios from 'axios'
 
-const utime = Math.floor(new Date() / 1000);
 const agencyEndpoint = 'http://localhost:8080';
-const agencyDid = 'VsKV7grR1BUE29mG2Fm2kX';
-const agencyVerkey = 'Hezce2UWMZ3wUhVkh2LfKSs8nDzWwzs2Win7EzNN3YaR';
-const seed = '000000000000000000000000Trustee1';
 // const agencyEndpoint = 'http://52.212.123.111:8080';
 
-const provisionConfig = {
-    'agency_url': agencyEndpoint,
-    'agency_did': agencyDid,
-    'agency_verkey': agencyVerkey,
-    'wallet_name': `node_vcx_demo_alice_wallet_${utime}`,
-    'wallet_key': '123',
-    'payment_method': 'null',
-    'enterprise_seed': seed
-};
+const seed = '00000000000000000000000000000001';
 
-const logLevel = 'info';
+const logLevel = process.env.VCX_LOG_LEVEL || 'info';
 
 function generateProvisionConfig(enterpriseSeed, agencyUrl, agencyDid, agencyVerkey, walletName) {
     const provisionConfig = {
@@ -41,27 +30,48 @@ function generateProvisionConfig(enterpriseSeed, agencyUrl, agencyDid, agencyVer
     return provisionConfig
 }
 
-const connectingAs = 'alice';
 
 const genesisPath = `${__dirname}/docker.txn`;
-// const genesisPath = `${__dirname}/testnet.txn`;
 
-async function run() {
-    const agentProvisionConfigs = await createStorage('agent-provisions');
-    const connectionStorage = await createStorage('connections');
+const CLIENT_ACTIONS = {
+    "SEND_MSG": "SEND_MSG",
+    "CHECK_CRED_OFFERS": "CHECK_CRED_OFFERS",
+    "ACCEPT_CRED_OFFERS": "ACCEPT_CRED_OFFERS",
+};
+
+const DO_ACTIONS = [CLIENT_ACTIONS.ACCEPT_CRED_OFFERS];
+// const DO_ACTIONS = [CLIENT_ACTIONS.CHECK_CRED_OFFERS];
+// const DO_ACTIONS = [];s
+
+
+async function initLibvcx() {
+    logger.info(`-----------------------------------------------------------`);
+    logger.info(`Initilizing libvcx`);
+    logger.info(`-----------------------------------------------------------`);
 
     logger.info("#0 initialize lib null pay");
     await demoCommon.initLibNullPay();
 
     logger.info("#0 initialize rust API from NodeJS");
     await demoCommon.initRustApiAndLogger(logLevel);
+}
 
-    const provisionAgentConfigKey = `${agencyEndpoint}-${seed}`;
+async function assureAgentInAgency(clientName) {
+    logger.info(`-----------------------------------------------------------`);
+    logger.info(`Assuring agent in agency for client ${clientName}`);
+    logger.info(`-----------------------------------------------------------`);
+    const agentProvisionConfigs = await createStorage('client-agent-provisions');
+
+    const {data: { DID: agencyDid, verKey: agencyVerkey}} = await axios.get(`${agencyEndpoint}/agency`);
+    logger.info(`Dicovered Agency did: ${agencyDid}`);
+    logger.info(`Dicovered Agency verkey: ${agencyVerkey}`);
+
+    const provisionAgentConfigKey = `${clientName}-${agencyEndpoint}-${seed}`;
     if (!(await agentProvisionConfigs.get(provisionAgentConfigKey))) {
         logger.info(`[Agent provisioning] No agent configuration was found for agency ${provisionAgentConfigKey}.`);
         logger.info(`[Agent provisioning] Using seed'${seed}' to create agent in '${agencyEndpoint}' agency.`);
 
-        const provisionConfig = generateProvisionConfig(seed, agencyEndpoint, agencyDid, agencyVerkey, connectingAs);
+        const provisionConfig = generateProvisionConfig(seed, agencyEndpoint, agencyDid, agencyVerkey, clientName);
         logger.debug(`[Agent provisioning] Config used to provision agent:\n${JSON.stringify(provisionConfig, null, 2)}\n`);
 
         const createdAgentConfig = await demoCommon.provisionAgentInAgency(provisionConfig);
@@ -75,73 +85,113 @@ async function run() {
     await demoCommon.initVcxWithProvisionedAgentConfig(provisionedAgentConfig, genesisPath);
 
     logger.info(`Agent is ready!`);
+}
 
-    logger.info(`Going to retrieve Faber connection information, or create new connection.`);
-    if (!(await connectionStorage.get(connectingAs))) {
-        logger.info(`We are connecting as '${connectingAs}'. This person was not yet connected to faber.`);
+async function createOrRetrieveConnection(storageConnection, clientName, peerName = 'faber') {
+    logger.info(`Going to retrieve connection information, or create new connection.`);
+    const connectionId = `${clientName}-to-${peerName}`;
+    if (!(await storageConnection.get(connectionId))) {
+        logger.info(`We are connecting as '${clientName}' to ${peerName}. This person was not yet connected to faber.`);
         logger.info("#9 Input faber.py invitation details");
         const details = readlineSync.question('Enter your invite details: ');
         const jdetails = JSON.parse(details);
         logger.info("#10 Convert to valid json and string and create a connection to faber");
-        const connection_to_faber = await Connection.createWithInvite({id: 'faber', invite: JSON.stringify(jdetails)});
-        await connection_to_faber.connect({data: '{"use_public_did": true}'});
-        await connection_to_faber.updateState();
+        const connection = await Connection.createWithInvite({id: peerName, invite: JSON.stringify(jdetails)});
+        logger.info("#10 Connection objectcreated");
+        await connection.connect({data: '{"use_public_did": true}'});
+        logger.info("#10 Connected");
+        await connection.updateState();
+        logger.info("#10 Updated state");
 
-        const serialized = await connection_to_faber.serialize();
-        connectionStorage.set(connectingAs, serialized);
+        const serialized = await connection.serialize();
+        logger.info("#10 Serialized connection");
+        await storageConnection.set(connectionId, serialized);
+        logger.info("#10 Saved Serialized connection");
     } else {
-        logger.info(`We are connecting as ${connectingAs} and connection was already established before. Will be loaded.`);
+        logger.info(`We are connecting as '${clientName}' and connection was already established before. Will be loaded.`);
     }
-    const connection_to_faber_serialized = await connectionStorage.get(connectingAs);
-    const connection_to_faber = await Connection.deserialize(connection_to_faber_serialized);
-
-    logger.info(`Connection object is ready.`);
-    logger.info(`Sending message to Faber`);
-    connection_to_faber.sendMessage("Hello world. This your frend.")
-
-    // logger.info("#11 Wait for faber.py to issue a credential offer");
-    // await sleepPromise(5000);
-    // const offers = await Credential.getOffers(connection_to_faber);
-    // logger.info(`Alice found ${offers.length} credential offers.`);
-    // logger.debug(JSON.stringify(offers));
-    //
-    // // Create a credential object from the credential offer
-    // const credential = await Credential.create({sourceId: 'credential', offer: JSON.stringify(offers[0])});
-    //
-    // logger.info("#15 After receiving credential offer, send credential request");
-    // await credential.sendRequest({connection: connection_to_faber, payment : 0});
-    //
-    // logger.info("#16 Poll agency and accept credential offer from faber");
-    // let credential_state = await credential.getState();
-    // while (credential_state !== StateType.Accepted) {
-    //     sleepPromise(2000);
-    //     await credential.updateState();
-    //     credential_state = await credential.getState();
-    // }
-    //
-    // logger.info("#22 Poll agency for a proof request");
-    // const requests = await DisclosedProof.getRequests(connection_to_faber);
-    //
-    // logger.info("#23 Create a Disclosed proof object from proof request");
-    // const proof = await DisclosedProof.create({sourceId: 'proof', request: JSON.stringify(requests[0])});
-    //
-    // logger.info("#24 Query for credentials in the wallet that satisfy the proof request");
-    // const credentials = await proof.getCredentials();
-    //
-    // // Use the first available credentials to satisfy the proof request
-    // for (let i = 0; i < Object.keys(credentials['attrs']).length; i++) {
-    //     const attr = Object.keys(credentials['attrs'])[i];
-    //     credentials['attrs'][attr] = {
-    //         'credential': credentials['attrs'][attr][0]
-    //     }
-    // }
-    //
-    // logger.info("#25 Generate the proof");
-    // await proof.generateProof({selectedCreds: credentials, selfAttestedAttrs: {}});
-    //
-    // logger.info("#26 Send the proof to faber");
-    // await proof.sendProof(connection_to_faber);
+    logger.info(`#10 Retrieveing connection for ${clientName}`);
+    const connectionSerialized = await storageConnection.get(connectionId);
+    logger.info(`#10 Loaded connection data ${JSON.stringify(connectionSerialized)}`);
+    const connection = await Connection.deserialize(connectionSerialized);
+    return connection
 }
 
+async function sendMessage(connection) {
+    logger.info(`Connection object is ready.`);
+    await connection.sendMessage({msg: "are you there?", type: "question", title: "Sending moar"})
+}
+
+async function getAndAcceptCredOffers(connection) {
+    const offers = await Credential.getOffers(connection);
+
+    logger.info(`---------------------------------------------------------------------------------------------------`);
+    logger.info(`Found ${offers.length} credential offers.`);
+    logger.info(`---------------------------------------------------------------------------------------------------`);
+    logger.debug(JSON.stringify(offers));
+
+    // Create a credential object from the credential offer
+    const credential = await Credential.create({sourceId: 'credential', offer: JSON.stringify(offers[0])});
+
+    logger.info(`---------------------------------------------------------------------------------------------------`);
+    logger.info(`Sending credential request for offer ${JSON.stringify(offers[0])}`);
+    logger.info(`---------------------------------------------------------------------------------------------------`);
+    await credential.sendRequest({connection: connection, payment: 0});
+
+    logger.info("#16 Poll agency and accept credential offer from faber");
+    let credentialState = await credential.getState();
+    logger.info(`After sending credential request, the statee of credential is ${credentialState}`);
+    while (credentialState !== StateType.Accepted) {
+        sleepPromise(2000);
+        await credential.updateState();
+        logger.info(`Polling credential status ... status=${credentialState}`);
+        credentialState = await credential.getState();
+    }
+}
+
+async function getCredOffers(connection) {
+    const offers = await Credential.getOffers(connection);
+
+    logger.info(`---------------------------------------------------------------------------------------------------`);
+    logger.info(`Found ${offers.length} credential offers.`);
+    logger.info(`---------------------------------------------------------------------------------------------------`);
+    logger.debug(JSON.stringify(offers));
+
+}
+
+async function executeClientAction(action, connection, clientIdentity, connectingTo) {
+
+    logger.info(`---------------------------------------------------------------------------------------------------`);
+    logger.info(`Executing '${action}' between client '${clientIdentity}' and peer '${connectingTo}'.`);
+    logger.info(`---------------------------------------------------------------------------------------------------`);
+    switch (action) {
+        case CLIENT_ACTIONS.SEND_MSG:
+            await sendMessage(connection);
+            break;
+        case CLIENT_ACTIONS.ACCEPT_CRED_OFFERS:
+            await getAndAcceptCredOffers(connection);
+            break;
+        case CLIENT_ACTIONS.CHECK_CRED_OFFERS:
+            await getCredOffers(connection);
+            break
+        default:
+            throw Error(`Unknown action ${action}`);
+    }
+}
+
+
+async function run() {
+    const clientIdentity = process.env.CLIENT_NAME || 'alice';
+    const connectingTo = 'absa';
+
+    await initLibvcx();
+    await assureAgentInAgency(clientIdentity);
+    const connectionStorage = await createStorage('client-connections');
+
+    const connection = await createOrRetrieveConnection(connectionStorage, clientIdentity, connectingTo);
+    for (const action of DO_ACTIONS) {
+        await executeClientAction(action, connection, clientIdentity, connectingTo)
+    }
+}
 
 run();

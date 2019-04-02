@@ -108,15 +108,18 @@ async function run() {
     });
 
     logger.info("#13 Issue credential offer to alice");
+
     await credentialForAlice.sendOffer(connectionToAlice);
     await credentialForAlice.updateState();
 
     logger.info("#14 Poll agency and wait for alice to send a credential request");
     let credential_state = await credentialForAlice.getState();
+    logger.info(`Credential state = ${credential_state}`)
     while (credential_state !== StateType.RequestReceived) {
         await sleepPromise(2000);
         await credentialForAlice.updateState();
         credential_state = await credentialForAlice.getState();
+        logger.info(`Credential state = ${credential_state}`)
     }
 
     logger.info("#17 Issue credential to alice");
@@ -126,10 +129,12 @@ async function run() {
     logger.info("#18 Wait for alice to accept credential");
     await credentialForAlice.updateState();
     credential_state = await credentialForAlice.getState();
+    logger.info(`Credential state = ${credential_state}`)
     while (credential_state !== StateType.Accepted) {
         sleepPromise(2000);
         await credentialForAlice.updateState();
         credential_state = await credentialForAlice.getState();
+        logger.info(`Credential state = ${credential_state}`)
     }
 
     const proofAttributes = [

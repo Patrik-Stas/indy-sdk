@@ -335,7 +335,7 @@ pub extern fn vcx_credential_get_offers(command_handle: u32,
 pub extern fn vcx_credential_update_state(command_handle: u32,
                                           credential_handle: u32,
                                           cb: Option<extern fn(xcommand_handle: u32, err: u32, state: u32)>) -> u32 {
-    info!("vcx_credential_update_state >>>");
+    info!("vcx_credential_update_state >>>  ");
 
     check_useful_c_callback!(cb, VcxErrorKind::InvalidOption);
 

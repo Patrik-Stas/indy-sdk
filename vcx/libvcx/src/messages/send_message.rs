@@ -193,12 +193,12 @@ pub fn send_generic_message(connection_handle: u32, msg: &str, msg_type: &str, m
         return Err(VcxError::from(VcxErrorKind::NotReady));
     }
 
-    let agent_did = connection::get_agent_did(connection_handle)?;
-    let agent_vk = connection::get_agent_verkey(connection_handle)?;
-    let did = connection::get_pw_did(connection_handle)?;
-    let vk = connection::get_pw_verkey(connection_handle)?;
-    let remote_vk = connection::get_their_pw_verkey(connection_handle)?;
-
+    let agent_did = connection::get_agent_did(connection_handle)?;  // did of sender's agent in configured agency
+    let agent_vk = connection::get_agent_verkey(connection_handle)?; // did of sender's agent in configured agency
+    let did = connection::get_pw_did(connection_handle)?;  // sender's pairwise did
+    let vk = connection::get_pw_verkey(connection_handle)?; // sender's pairwise vk
+    let remote_vk = connection::get_their_pw_verkey(connection_handle)?; // recipient (the final receiver) pairwise verkey
+    debug!("send_generic_message agent_did: {:?} agent_vk: {:?} did: {:?} vk: {:?} remote_vk: {:?}", agent_did, agent_vk, did, vk, remote_vk);
     let response =
         send_message()
             .to(&did)?
@@ -212,6 +212,7 @@ pub fn send_generic_message(connection_handle: u32, msg: &str, msg_type: &str, m
             .status_code(&MessageStatusCode::Accepted)?
             .send_secure()?;
 
+    debug!("Message response: {:?}", response);
     let msg_uid = response.get_msg_uid()?;
     return Ok(msg_uid);
 }

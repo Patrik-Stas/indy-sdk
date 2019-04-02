@@ -53,9 +53,21 @@ impl ForwardAgentConnection {
                     .map_err(|err| err.context("Can't store their DID for Forward Agent Connection pairwise.").into())
             })
             .and_then(move |(their_did, their_verkey)| {
+                let their_did_meta = json!({"description": "their_did"}).to_string();
+                did::set_did_metadata(wallet_handle, &their_did, their_did_meta.as_str())
+                    .map(move |_res| (their_did, their_verkey))
+                    .map_err(|err| err.context("Can't store metadata for their did.").into())
+            })
+            .and_then(move |(their_did, their_verkey)| {
                 did::create_and_store_my_did(wallet_handle, "{}")
-                    .map(|(my_did, my_verkey)| (my_did, my_verkey, their_did, their_verkey))
+                    .map(move |(my_did, my_verkey)| (my_did, my_verkey, their_did, their_verkey))
                     .map_err(|err| err.context("Can't create my DID for Forward Agent Connection pairwise.").into())
+            })
+            .and_then(move |(my_did, my_verkey, their_did, their_verkey)| {
+                let my_did_meta = json!({"description ":"ForwardAgentConnection our_did", "against_their_did": their_did}).to_string();
+                did::set_did_metadata(wallet_handle, &my_did, my_did_meta.as_str())
+                    .map(move |_res| (my_did, my_verkey, their_did, their_verkey))
+                    .map_err(|err| err.context("Can't store metadata for their did.").into())
             })
             .and_then(move |(my_did, my_verkey, their_did, their_verkey)| {
                 let state = ForwardAgentConnectionState {
@@ -74,6 +86,7 @@ impl ForwardAgentConnection {
                     .into_box()
             })
             .and_then(move |(my_did, my_verkey, their_did, their_verkey, state)| {
+                debug!("ForwardAgentConnection::create is going to add new A2A route for my_did:{} their_did:{}", my_did, their_did);
                 let forward_agent_connection = ForwardAgentConnection {
                     wallet_handle,
                     their_did,

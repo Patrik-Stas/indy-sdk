@@ -1129,6 +1129,7 @@ impl AgentConnection {
     }
 
     fn send_remote_message(&self, message: Vec<u8>, endpoint: String) -> ResponseFuture<(), Error> {
+        debug!("Sending message to remote endpoint {:?}", endpoint);
         let router = self.router.clone();
         future::ok(())
             .and_then(move |_| {
@@ -1156,6 +1157,9 @@ impl AgentConnection {
 
         let remote_forward_agent_detail = &remote_connection_detail.forward_agent_detail;
         let remote_agent_pairwise_detail = &remote_connection_detail.agent_key_dlg_proof;
+        debug!("AgentConnection::prepare_remote_message, remote_connection_detail={:?}", &remote_connection_detail);
+        debug!("AgentConnection::prepare_remote_message, remote_forward_agent_detail={:?}", &remote_forward_agent_detail);
+        debug!("AgentConnection::prepare_remote_message, remote_agent_pairwise_detail={:?}", &remote_agent_pairwise_detail);
 
         let message = A2AMessage::prepare_authcrypted(self.wallet_handle,
                                                       &self.agent_pairwise_verkey,
@@ -1289,6 +1293,9 @@ impl AgentConnection {
             logo_url: None,
             public_did: None,
         };
+
+
+        debug!("Forward agency detail: {:?}", &self.forward_agent_detail);
 
         let messages =
             match ProtocolType::get() {

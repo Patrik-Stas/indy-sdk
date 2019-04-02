@@ -36,8 +36,10 @@ impl Requester {
             .map_err(|err| err.into())
             .and_then(|res|
                 if res.status().is_success() {
+                    debug!("Got response {:?}", &res.status());
                     future::ok(()).into_box()
                 } else {
+                    debug!("Request sfailed with status {:?}",  &res.status());
                     err!(err_msg("Request failed."))
                 })
             .into_box()

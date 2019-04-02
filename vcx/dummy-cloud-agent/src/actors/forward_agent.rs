@@ -81,6 +81,12 @@ impl ForwardAgent {
                     .map_err(|err| err.context("Can't create Forward Agent did.").into())
             })
             .and_then(move |(wallet_handle, config, wallet_storage_config)| {
+                let meta = json!({"description ":"ForwardAgent did"}).to_string();
+                did::set_did_metadata(wallet_handle, &config.did, meta.as_str())
+                    .map(move |_| (wallet_handle, config, wallet_storage_config))
+                    .map_err(|err| err.context("Can't store metadata for ForwardAgent did.").into())
+            })
+            .and_then(move |(wallet_handle, config, wallet_storage_config)| {
                 // Resolve verkey for Forward Agent DID
 
                 did::key_for_local_did(wallet_handle,
@@ -181,7 +187,7 @@ impl ForwardAgent {
     fn _forward_a2a_msg(&mut self,
                         msg: Vec<u8>) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgent::_forward_a2a_msg >> {:?}", msg);
-        debug!("ForwardAgent::_forward_a2a_msg");
+        debug!("1. ForwardAgent::_forward_a2a_msg");
 
         future::ok(())
             .into_actor(self)
@@ -203,9 +209,11 @@ impl ForwardAgent {
 
                 match msgs.pop() {
                     Some(A2AMessage::Version1(A2AMessageV1::Forward(msg))) => {
+                        debug!("1. A2A Message forward Version1");
                         send_to_router(msg.fwd, msg.msg)
                     }
                     Some(A2AMessage::Version2(A2AMessageV2::Forward(msg))) => {
+                        debug!("1. A2A Message forward Version2");
                         let msg_ = ftry_act!(slf, serde_json::to_vec(&msg.msg));
                         send_to_router(msg.fwd, msg_)
                     }

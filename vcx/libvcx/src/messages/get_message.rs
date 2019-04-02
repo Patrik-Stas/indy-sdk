@@ -138,7 +138,7 @@ impl GetMessagesBuilder {
     }
 
     pub fn download_messages(&mut self) -> VcxResult<Vec<MessageByConnection>> {
-        trace!("GetMessages::download >>>");
+        debug!("GetMessages::download >>>");
 
         let data = self.prepare_download_request()?;
 
@@ -154,6 +154,7 @@ impl GetMessagesBuilder {
     }
 
     fn prepare_download_request(&self) -> VcxResult<Vec<u8>> {
+        debug!("prepare_download_request >> protocol_type: {:?}", settings::get_protocol_type());
         let message = match settings::get_protocol_type() {
             settings::ProtocolTypes::V1 =>
                 A2AMessage::Version1(
@@ -177,11 +178,12 @@ impl GetMessagesBuilder {
 
         let agency_did = settings::get_config_value(settings::CONFIG_REMOTE_TO_SDK_DID)?;
 
+        debug!("prepare_download_request >> message for agency: {:?}", message);
         prepare_message_for_agency(&message, &agency_did)
     }
 
     fn parse_download_messages_response(response: Vec<u8>) -> VcxResult<Vec<MessageByConnection>> {
-        trace!("parse_get_connection_messages_response >>>");
+        debug!("parse_get_connection_messages_response >>>");
         let mut response = parse_response_from_agency(&response)?;
 
         let msgs = match response.remove(0) {
@@ -193,6 +195,7 @@ impl GetMessagesBuilder {
         msgs
             .iter()
             .map(|connection| {
+                debug!("after decrypting agency message, we got some PW-encryptyed message originating for PW DID: {:?}", connection.pairwise_did);
                 ::utils::libindy::signus::get_local_verkey(&connection.pairwise_did)
                     .map(|vk| MessageByConnection {
                         pairwise_did: connection.pairwise_did.clone(),
@@ -338,7 +341,7 @@ pub fn get_ref_msg(msg_id: &str, pw_did: &str, pw_vk: &str, agent_did: &str, age
 }
 
 pub fn download_messages(pairwise_dids: Option<Vec<String>>, status_codes: Option<Vec<String>>, uids: Option<Vec<String>>) -> VcxResult<Vec<MessageByConnection>> {
-    trace!("download_messages >>> pairwise_dids: {:?}, status_codes: {:?}, uids: {:?}",
+    debug!("download_messages >>> pairwise_dids: {:?}, status_codes: {:?}, uids: {:?}",
            pairwise_dids, status_codes, uids);
 
     if settings::test_agency_mode_enabled() {
