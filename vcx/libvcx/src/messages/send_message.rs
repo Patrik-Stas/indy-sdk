@@ -189,6 +189,7 @@ impl SendResponse {
 }
 
 pub fn send_generic_message(connection_handle: u32, msg: &str, msg_type: &str, msg_title: &str) -> VcxResult<String> {
+    debug!("send_generic_message >>> msg:{:?}, msg_title:{:?}", msg, msg_type);
     if connection::get_state(connection_handle) != VcxStateType::VcxStateAccepted as u32 {
         return Err(VcxError::from(VcxErrorKind::NotReady));
     }
