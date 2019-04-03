@@ -21,6 +21,7 @@ pub fn new(config: AppConfig, forward_agent: Addr<ForwardAgent>) -> App<AppState
 }
 
 fn _get_endpoint_details(state: State<AppState>) -> FutureResponse<HttpResponse> {
+    debug!("_get_endpoint_details >>>");
     state.forward_agent
         .send(GetEndpoint {})
         .from_err()
@@ -32,7 +33,7 @@ fn _get_endpoint_details(state: State<AppState>) -> FutureResponse<HttpResponse>
 }
 
 fn _forward_message((state, req): (State<AppState>, HttpRequest<AppState>)) -> FutureResponse<HttpResponse> {
-    debug!("0. app.rs _forward_message");
+    debug!("_forward_message >>>");
     req
         .body()
         .limit(MAX_PAYLOAD_SIZE)

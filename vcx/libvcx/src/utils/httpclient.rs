@@ -14,6 +14,7 @@ lazy_static! {
 pub fn post_u8(body_content: &Vec<u8>) -> VcxResult<Vec<u8>> {
     let endpoint = settings::get_config_value(settings::CONFIG_AGENCY_ENDPOINT)?;
     let url = format!("{}/agency/msg", endpoint);
+    debug!("Sending a message to agency url {:?}", url);
 
     if settings::test_agency_mode_enabled() {
         return Ok(NEXT_U8_RESPONSE.lock().unwrap().pop().unwrap_or(Vec::new()));
@@ -38,7 +39,7 @@ pub fn post_u8(body_content: &Vec<u8>) -> VcxResult<Vec<u8>> {
                 VcxError::from_msg(VcxErrorKind::PostMessageFailed, "Could not connect")
             })?;
 
-    trace!("Response Header: {:?}", response);
+    debug!("Response Header: {:?}", response);
     if !response.status().is_success() {
         let mut content = String::new();
         match response.read_to_string(&mut content) {

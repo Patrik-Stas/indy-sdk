@@ -338,7 +338,9 @@ impl Handler<GetEndpoint> for ForwardAgent {
     fn handle(&mut self, _msg: GetEndpoint, _cnxt: &mut Self::Context) -> Self::Result {
         trace!("Handler<GetEndpoint>::handle >> {:?}", _msg);
         let (did, verkey) = self._get_endpoint();
-        Ok(Endpoint { did, verkey })
+        let response = Endpoint { did, verkey };
+        trace!("Handler<GetEndpoint>::handle >> Sending Ok response with: {:?}", response);
+        Ok(response)
     }
 }
 

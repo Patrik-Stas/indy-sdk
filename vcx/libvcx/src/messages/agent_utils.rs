@@ -232,6 +232,7 @@ pub fn connect_register_provision(config: &str) -> VcxResult<String> {
 }
 
 fn onboarding_v1(my_did: &str, my_vk: &str, agency_did: &str) -> VcxResult<(String, String)> {
+    debug!("onboarding_v1 >>> ");
     /* STEP 1 - CONNECT */
     if settings::test_agency_mode_enabled() {
         httpclient::set_next_u8_response(CONNECTED_RESPONSE.to_vec());
