@@ -9,12 +9,19 @@ export const VcxStatus = StructType({
   status: 'int'
 })
 
+interface IUintTypes {
+  [key: string]: string
+}
+const UINTS_TYPES: IUintTypes = { x86: 'uint32', x64: 'uint64' }
+const ARCHITECTURE: string = process.env.LIBVCX_FFI_ARCHITECTURE || 'x86'
+const FFI_UINT: string = UINTS_TYPES[ARCHITECTURE]
+
 // FFI Type Strings
 export const FFI_ERROR_CODE = 'int'
 export const FFI_BOOL = 'bool'
-export const FFI_CONNECTION_HANDLE = 'uint32'
-export const FFI_UNSIGNED_INT = 'uint32'
-export const FFI_UNSIGNED_INT_PTR = ref.refType('uint32')
+export const FFI_CONNECTION_HANDLE = FFI_UINT
+export const FFI_UNSIGNED_INT = FFI_UINT
+export const FFI_UNSIGNED_INT_PTR = ref.refType(FFI_UINT)
 export const FFI_STRING = 'string'
 export const FFI_CONFIG_PATH = FFI_STRING
 export const FFI_STRING_DATA = 'string'
@@ -23,14 +30,14 @@ export const FFI_CONNECTION_DATA = 'string'
 export const FFI_VOID = ref.types.void
 export const FFI_CONNECTION_HANDLE_PTR = ref.refType(FFI_CONNECTION_HANDLE)
 export const FFI_CALLBACK_PTR = 'pointer'
-export const FFI_COMMAND_HANDLE = 'uint32'
-export const FFI_CREDENTIAL_HANDLE = 'uint32'
-export const FFI_PROOF_HANDLE = 'uint32'
-export const FFI_CREDENTIALDEF_HANDLE = 'uint32'
-export const FFI_SCHEMA_HANDLE = 'uint32'
-export const FFI_SCHEMA_NUMBER = 'uint32'
-export const FFI_PAYMENT_HANDLE = 'uint32'
-export const FFI_PRICE = 'uint32'
+export const FFI_COMMAND_HANDLE = FFI_UINT
+export const FFI_CREDENTIAL_HANDLE = FFI_UINT
+export const FFI_PROOF_HANDLE = FFI_UINT
+export const FFI_CREDENTIALDEF_HANDLE = FFI_UINT
+export const FFI_SCHEMA_HANDLE = FFI_UINT
+export const FFI_SCHEMA_NUMBER = FFI_UINT
+export const FFI_PAYMENT_HANDLE = FFI_UINT
+export const FFI_PRICE = FFI_UINT
 export const FFI_LOG_FN = 'pointer'
 export const FFI_POINTER = 'pointer'
 export const FFI_VOID_POINTER = 'void *'
