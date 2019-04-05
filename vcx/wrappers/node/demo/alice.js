@@ -37,6 +37,7 @@ const CLIENT_ACTIONS = {
     "SEND_MSG": "SEND_MSG",
     "CHECK_CRED_OFFERS": "CHECK_CRED_OFFERS",
     "ACCEPT_CRED_OFFERS": "ACCEPT_CRED_OFFERS",
+    "SIGN_DATA": "SIGN_DATA",
 };
 
 const DO_ACTIONS = [CLIENT_ACTIONS.ACCEPT_CRED_OFFERS];
@@ -159,6 +160,13 @@ async function getCredOffers(connection) {
 
 }
 
+
+async function signData(connection) {
+    var data = Buffer.from('0123456789', 'utf8');
+    const signed = await connection.signData(data);
+    console.log(JSON.stringify(signed))
+}
+
 async function executeClientAction(action, connection, clientIdentity, connectingTo) {
 
     logger.info(`---------------------------------------------------------------------------------------------------`);
@@ -173,6 +181,10 @@ async function executeClientAction(action, connection, clientIdentity, connectin
             break;
         case CLIENT_ACTIONS.CHECK_CRED_OFFERS:
             await getCredOffers(connection);
+            break
+
+        case CLIENT_ACTIONS.SIGN_DATA:
+            await signData(connection);
             break
         default:
             throw Error(`Unknown action ${action}`);
