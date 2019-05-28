@@ -25,6 +25,7 @@ impl Requester {
 
     pub fn send_message(&self, msg: Vec<u8>, endpoint: String) -> ResponseFuture<(), Error> {
         trace!("Requester::send_message >> {:?}, {:?}", msg, endpoint);
+        debug!("Requester::send_message >> endpoint: {:?}", endpoint);
 
         let request = match self.build_request(msg, &endpoint) {
             Ok(req) => req,
@@ -35,8 +36,10 @@ impl Requester {
             .map_err(|err| err.into())
             .and_then(|res|
                 if res.status().is_success() {
+                    debug!("Got response {:?}", &res.status());
                     future::ok(()).into_box()
                 } else {
+                    debug!("Request sfailed with status {:?}",  &res.status());
                     err!(err_msg("Request failed."))
                 })
             .into_box()

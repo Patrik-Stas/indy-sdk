@@ -10,27 +10,33 @@ import logger from './logger'
 const utime = Math.floor(new Date() / 1000);
 
 const provisionConfig = {
-    'agency_url': 'http://localhost:8080',
-    'agency_did': 'VsKV7grR1BUE29mG2Fm2kX',
-    'agency_verkey': 'Hezce2UWMZ3wUhVkh2LfKSs8nDzWwzs2Win7EzNN3YaR',
+    // 'agency_url': 'http://localhost:8080',
+    // 'agency_url': 'http://dummy1a.dev.indyscan.io',
+    // 'agency_did': '3UVauovKACCbLQAD7Brd1E',
+    // 'agency_verkey': '2MD6Jsy1qFC3EGP7QKxu5L6ozdchYuA3hhY3EzehbPWD',
+
+    'agency_url': 'https://agency.pdev.evernym.com',
+    'agency_did': 'LiLBGgFarh954ZtTByLM1C',
+    'agency_verkey': 'Bk9wFrud3rz8v3nAFKGib6sQs8zHWzZxfst7Wh3Mbc9W',
+
     'wallet_name': `node_vcx_demo_alice_wallet_${utime}`,
     'wallet_key': '123',
     'payment_method': 'null',
-    'enterprise_seed': '000000000000000000000000Trustee1'
+    'enterprise_seed': 'ClientDemo10000000000000Trustee2'
 };
 
-const logLevel = 'warn';
+const logLevel = 'trace';
 
 async function run() {
     await demoCommon.initLibNullPay();
-
     logger.info("#0 initialize rust API from NodeJS");
-    await demoCommon.initRustApiAndLogger(logLevel);
 
+    await demoCommon.initRustApiAndLogger(logLevel);
     logger.info("#1 Provision an agent and wallet, get back configuration details");
     let config = await demoCommon.provisionAgentInAgency(provisionConfig);
 
     logger.info("#2 Initialize libvcx with new configuration");
+    logger.info(`${JSON.stringify(config)}`);
     await demoCommon.initVcxWithProvisionedAgentConfig(config);
 
     logger.info("#9 Input faber.py invitation details");

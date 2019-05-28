@@ -37,7 +37,7 @@ impl ForwardAgentConnection {
                   router: Addr<Router>,
                   forward_agent_detail: ForwardAgentDetail,
                   wallet_storage_config: WalletStorageConfig) -> BoxedFuture<(String, String), Error> {
-        trace!("ForwardAgentConnection::create >> {:?}, {:?}, {:?}, {:?}, {:?}",
+        debug!("ForwardAgentConnection::create >> {:?}, {:?}, {:?}, {:?}, {:?}",
                wallet_handle, their_did, their_verkey, forward_agent_detail, wallet_storage_config);
 
         future::ok(())
@@ -53,9 +53,21 @@ impl ForwardAgentConnection {
                     .map_err(|err| err.context("Can't store their DID for Forward Agent Connection pairwise.").into())
             })
             .and_then(move |(their_did, their_verkey)| {
+                let their_did_meta = json!({"description": "their_did"}).to_string();
+                did::set_did_metadata(wallet_handle, &their_did, their_did_meta.as_str())
+                    .map(move |_res| (their_did, their_verkey))
+                    .map_err(|err| err.context("Can't store metadata for their did.").into())
+            })
+            .and_then(move |(their_did, their_verkey)| {
                 did::create_and_store_my_did(wallet_handle, "{}")
-                    .map(|(my_did, my_verkey)| (my_did, my_verkey, their_did, their_verkey))
+                    .map(move |(my_did, my_verkey)| (my_did, my_verkey, their_did, their_verkey))
                     .map_err(|err| err.context("Can't create my DID for Forward Agent Connection pairwise.").into())
+            })
+            .and_then(move |(my_did, my_verkey, their_did, their_verkey)| {
+                let my_did_meta = json!({"description ":"ForwardAgentConnection our_did", "against_their_did": their_did}).to_string();
+                did::set_did_metadata(wallet_handle, &my_did, my_did_meta.as_str())
+                    .map(move |_res| (my_did, my_verkey, their_did, their_verkey))
+                    .map_err(|err| err.context("Can't store metadata for their did.").into())
             })
             .and_then(move |(my_did, my_verkey, their_did, their_verkey)| {
                 let state = ForwardAgentConnectionState {
@@ -74,6 +86,7 @@ impl ForwardAgentConnection {
                     .into_box()
             })
             .and_then(move |(my_did, my_verkey, their_did, their_verkey, state)| {
+                debug!("ForwardAgentConnection::create is going to add new A2A route for my_did:{} their_did:{}", my_did, their_did);
                 let forward_agent_connection = ForwardAgentConnection {
                     wallet_handle,
                     their_did,
@@ -101,7 +114,7 @@ impl ForwardAgentConnection {
                    forward_agent_detail: ForwardAgentDetail,
                    wallet_storage_config: WalletStorageConfig,
                    router: Addr<Router>) -> BoxedFuture<(), Error> {
-        trace!("ForwardAgentConnection::restore >> {:?}, {:?}, {:?}, {:?}",
+        debug!("ForwardAgentConnection::restore >> {:?}, {:?}, {:?}, {:?}",
                wallet_handle, their_did, forward_agent_detail, wallet_storage_config);
 
         future::ok(())
@@ -177,6 +190,7 @@ impl ForwardAgentConnection {
     fn _handle_a2a_msg(&mut self,
                        msg: Vec<u8>) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgentConnection::_handle_a2a_msg >> {:?}", msg);
+        debug!("ForwardAgentConnection::_handle_a2a_msg");
 
         future::ok(())
             .into_actor(self)
@@ -202,6 +216,7 @@ impl ForwardAgentConnection {
     fn _handle_a2a_msg_v1(&mut self,
                           msg: A2AMessageV1) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgentConnection::_handle_a2a_msg_v1 >> {:?}", msg);
+        debug!("ForwardAgentConnection::_handle_a2a_msg_v1");
 
         match msg {
             A2AMessageV1::SignUp(msg) => {
@@ -217,6 +232,7 @@ impl ForwardAgentConnection {
     fn _handle_a2a_msg_v2(&mut self,
                           msg: A2AMessageV2) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgentConnection::_handle_a2a_msg_v2 >> {:?}", msg);
+        debug!("ForwardAgentConnection::_handle_a2a_msg_v2");
 
         match msg {
             A2AMessageV2::SignUp(msg) => {
@@ -231,6 +247,7 @@ impl ForwardAgentConnection {
 
     fn _sign_up_v1(&mut self, msg: SignUp) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgentConnection::_sign_up_v1 >> {:?}", msg);
+        debug!("ForwardAgentConnection::_sign_up_v1");
 
         self._sign_up()
             .and_then(|_, slf, _| {
@@ -245,6 +262,7 @@ impl ForwardAgentConnection {
 
     fn _sign_up_v2(&mut self, msg: SignUp) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgentConnection::_sign_up_v2 >> {:?}", msg);
+        debug!("ForwardAgentConnection::_sign_up_v2");
 
         self._sign_up()
             .and_then(|_, slf, _| {
@@ -259,6 +277,7 @@ impl ForwardAgentConnection {
 
     fn _sign_up(&mut self) -> ResponseActFuture<Self, (), Error> {
         trace!("ForwardAgentConnection::_sign_up >>");
+        debug!("ForwardAgentConnection::_sign_up");
 
         if self.state.is_signed_up {
             return err_act!(self, err_msg("Already signed up"));
@@ -284,6 +303,7 @@ impl ForwardAgentConnection {
 
     fn _create_agent_v1(&mut self, msg: CreateAgent) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgentConnection::_create_agent_v1 >> {:?}", msg);
+        debug!("ForwardAgentConnection::_create_agent_v1");
 
         self._create_agent()
             .and_then(|(did, verkey), slf, _| {
@@ -301,6 +321,7 @@ impl ForwardAgentConnection {
 
     fn _create_agent_v2(&mut self, msg: CreateAgent) -> ResponseActFuture<Self, Vec<u8>, Error> {
         trace!("ForwardAgentConnection::_create_agent_v2 >> {:?}", msg);
+        debug!("ForwardAgentConnection::_create_agent_v2");
 
         self._create_agent()
             .and_then(|(did, verkey), slf, _| {
@@ -317,7 +338,7 @@ impl ForwardAgentConnection {
     }
 
     fn _create_agent(&mut self) -> ResponseActFuture<Self, (String, String), Error> {
-        trace!("ForwardAgentConnection::_create_agent >> ");
+        debug!("ForwardAgentConnection::_create_agent >> ");
 
         if !self.state.is_signed_up {
             return err_act!(self, err_msg("Sign up is required."));

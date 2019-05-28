@@ -14,20 +14,22 @@ lazy_static! {
 pub fn post_u8(body_content: &Vec<u8>) -> VcxResult<Vec<u8>> {
     let endpoint = settings::get_config_value(settings::CONFIG_AGENCY_ENDPOINT)?;
     let url = format!("{}/agency/msg", endpoint);
+    debug!("1. Sending a message to agency url {:?}", url);
 
     if settings::test_agency_mode_enabled() {
         return Ok(NEXT_U8_RESPONSE.lock().unwrap().pop().unwrap_or(Vec::new()));
     }
-
+    debug!("2. Sending a message to agency url {:?}", url);
     //Setting SSL Certs location. This is needed on android platform. Or openssl will fail to verify the certs
     if cfg!(target_os = "android") {
         info!("::Android code");
         set_ssl_cert_location();
     }
+    debug!("3. Sending a message to agency url {:?}", url);
     let client = reqwest::ClientBuilder::new().timeout(::utils::timeout::TimeoutUtils::long_timeout()).build()
         .or(Err(VcxError::from_msg(VcxErrorKind::PostMessageFailed, "Preparing Post failed")))?;
     debug!("Posting encrypted bundle to: \"{}\"", url);
-
+    debug!("4. Sending a message to agency url {:?}", url);
     let mut response =
         client.post(&url)
             .body(body_content.to_owned())

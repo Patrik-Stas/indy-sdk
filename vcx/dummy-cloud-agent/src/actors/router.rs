@@ -16,7 +16,7 @@ pub struct Router {
 impl Router {
     pub fn new(requester: Addr<Requester>) -> Router {
         trace!("Router::new >>");
-
+        debug!("Creating new Router.");
         Router {
             routes: HashMap::new(),
             pairwise_routes: HashMap::new(),
@@ -24,18 +24,33 @@ impl Router {
         }
     }
 
+    fn print_routes(&self) {
+        debug!("Available routes {:?}", self.routes.keys());
+    }
+
+
+    fn print_pairwise_routes(&self) {
+        debug!("Available pairwise_routes {:?}", self.pairwise_routes.keys());
+    }
+
     fn add_a2a_route(&mut self, did: String, handler: Recipient<HandleA2AMsg>) {
         trace!("Router::handle_add_route >> {}", did);
+        debug!("Router Adding new A2A route for did '{}'", did);
         self.routes.insert(did, handler);
+        self.print_routes();
     }
 
     fn add_a2conn_route(&mut self, did: String, handler: Recipient<HandleA2ConnMsg>) {
         trace!("Router::add_a2conn_route >> {}", did);
+        debug!("Router Adding new A2Conn route for did '{}'", did);
         self.pairwise_routes.insert(did, handler);
+        self.print_pairwise_routes()
     }
 
     pub fn route_a2a_msg(&self, did: String, msg: Vec<u8>) -> ResponseFuture<Vec<u8>, Error> {
         trace!("Router::route_a2a_msg >> {:?}, {:?}", did, msg);
+        debug!("2. Router::route_a2a_msg >> Searching route for {:?}", did);
+        self.print_routes();
 
         if let Some(addr) = self.routes.get(&did) {
             addr
@@ -44,12 +59,13 @@ impl Router {
                 .and_then(|res| res)
                 .into_box()
         } else {
-            err!(err_msg("No route found."))
+            err!(err_msg("No A2A route found."))
         }
     }
 
     pub fn route_a2conn_msg(&self, did: String, msg: A2ConnMessage) -> ResponseFuture<A2ConnMessage, Error> {
-        trace!("Router::route_a2conn_msg >> {:?}, {:?}", did, msg);
+        debug!("Router::route_a2conn_msg >> Want to msg to did: {:?}. The message: {:?}", did, msg);
+        self.print_pairwise_routes();
 
         if let Some(addr) = self.pairwise_routes.get(&did) {
             addr
@@ -58,12 +74,12 @@ impl Router {
                 .and_then(|res| res)
                 .into_box()
         } else {
-            err!(err_msg("No route found."))
+            err!(err_msg("No A2Conn route found."))
         }
     }
 
     pub fn route_to_requester(&self, msg: RemoteMsg) -> ResponseFuture<(), Error> {
-        trace!("Router::route_to_requester >> {:?}", msg);
+        debug!("Router::route_to_requester >> {:?}", msg);
 
         self.requester
             .send(msg)
