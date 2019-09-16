@@ -35,6 +35,7 @@ use failure::*;
 use futures::*;
 use std::env;
 use std::fs::File;
+use actors::admin::Admin;
 
 #[macro_use]
 pub(crate) mod utils;
@@ -91,14 +92,15 @@ fn _start(config_path: &str) {
 
         ProtocolType::set(protocol_type_config);
 
-        ForwardAgent::create_or_restore(forward_agent_config, wallet_storage_config)
+        let admin = Admin::create();
+        ForwardAgent::create_or_restore(forward_agent_config, wallet_storage_config, admin.clone())
             .map(move |forward_agent| {
                 info!("Forward Agent started");
                 info!("Starting Server with config: {:?}", server_config);
 
                 server::start(server_config, move || {
                     info!("Starting App with config: {:?}", app_config);
-                    app::new(app_config.clone(), forward_agent.clone())
+                    app::new( app_config.clone(), forward_agent.clone(), admin.clone())
                 });
 
                 info!("Server started");
