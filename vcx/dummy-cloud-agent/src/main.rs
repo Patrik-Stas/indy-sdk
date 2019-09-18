@@ -36,6 +36,11 @@ use futures::*;
 use std::env;
 use std::fs::File;
 use actors::admin::Admin;
+use actix_web::{HttpServer, HttpResponse, web, App};
+use actix_web::middleware::Logger;
+use hyper::service::NewService;
+use actix_web::body::{Body, MessageBody};
+use app::start_app_server;
 
 #[macro_use]
 pub(crate) mod utils;
@@ -44,7 +49,6 @@ pub(crate) mod actors;
 pub(crate) mod app;
 pub(crate) mod domain;
 pub(crate) mod indy;
-pub(crate) mod server;
 
 fn main() {
     indy::logger::set_default_logger(None)
@@ -95,15 +99,7 @@ fn _start(config_path: &str) {
         let admin = Admin::create();
         ForwardAgent::create_or_restore(forward_agent_config, wallet_storage_config, admin.clone())
             .map(move |forward_agent| {
-                info!("Forward Agent started");
-                info!("Starting Server with config: {:?}", server_config);
-
-                server::start(server_config, move || {
-                    info!("Starting App with config: {:?}", app_config);
-                    app::new( app_config.clone(), forward_agent.clone(), admin.clone())
-                });
-
-                info!("Server started");
+                start_app_server(server_config, app_config, forward_agent, admin)
             })
             .map(|_| ()) // TODO: Expose server addr for graceful shutdown support
             .map_err(|err| panic!("Can't start Indy Dummy Agent: {}!", err))
@@ -111,6 +107,7 @@ fn _start(config_path: &str) {
 
     let _ = sys.run();
 }
+
 
 fn _print_help() {
     println!("Hyperledger Indy Dummy Agent");
@@ -123,3 +120,5 @@ fn _print_help() {
     println!("\t\tindy-dummy-agent --help");
     println!();
 }
+
+

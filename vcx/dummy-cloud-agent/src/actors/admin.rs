@@ -4,7 +4,6 @@ use failure::{Error, err_msg};
 use std::collections::HashMap;
 use domain::admin_message::{AdminQuery, ResAdminQuery, ResQueryAdmin};
 use utils::futures::FutureExt;
-use actix_web::FutureResponse;
 use futures::{Future};
 use futures::future::ok;
 
@@ -28,7 +27,7 @@ impl Admin {
     }
 
     pub fn handle_admin_message(&self, admin_msg: &AdminQuery)
-                                -> FutureResponse<ResAdminQuery, Error> {
+                                -> Box<Future<Item=ResAdminQuery, Error=Error>> {
         match admin_msg {
             AdminQuery::GetDetailForwardAgents => {
                 if let Some(addr) = self.forward_agent.as_ref() {
@@ -96,7 +95,7 @@ impl Actor for Admin {
 }
 
 impl Handler<HandleAdminMessage> for Admin {
-    type Result = FutureResponse<ResAdminQuery, Error>;
+    type Result = Box<Future<Item=ResAdminQuery, Error=Error>>;
 
     fn handle(&mut self, msg: HandleAdminMessage, _cnxt: &mut Self::Context) -> Self::Result {
         trace!("Admin Handler<HandleAdminMessage>::handle");

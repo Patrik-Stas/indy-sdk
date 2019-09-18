@@ -16,6 +16,9 @@ use utils::rand;
 use serde_json;
 use actors::admin::Admin;
 use domain::admin_message::{ResAdminQuery, ResQueryAgent};
+use domain::message_type::MessageTypeV1;
+use serde::Serialize;
+use serde_json::Value;
 
 #[allow(unused)] //FIXME:
 pub struct Agent {
@@ -284,8 +287,7 @@ impl Agent {
     fn handle_agent_msg_v1(&mut self,
                            sender_vk: String,
                            msg: A2AMessageV1) -> ResponseActFuture<Self, Vec<u8>, Error> {
-        trace!("Agent::handle_agent_msg_v1 >> {:?}, {:?}", sender_vk, msg);
-
+        debug!("Agent::handle_agent_msg_v1 >> {:?}, {:?}", sender_vk, msg);
         match msg {
             A2AMessageV1::CreateKey(msg) => self.handle_create_key_v1(msg),
             A2AMessageV1::GetMessagesByConnections(msg) => self.handle_get_messages_by_connections_v1(msg),
@@ -308,8 +310,7 @@ impl Agent {
     fn handle_agent_msg_v2(&mut self,
                            sender_vk: String,
                            msg: A2AMessageV2) -> ResponseActFuture<Self, Vec<u8>, Error> {
-        trace!("Agent::handle_agent_msg_v2 >> {:?}, {:?}", sender_vk, msg);
-
+        debug!("Agent::handle_agent_msg_v2 >> {:?}, {:?}", sender_vk, msg);
         match msg {
             A2AMessageV2::CreateKey(msg) => self.handle_create_key_v2(msg),
             A2AMessageV2::GetMessagesByConnections(msg) => self.handle_get_messages_by_connections_v2(msg),
@@ -604,7 +605,7 @@ impl Agent {
     fn handle_update_configs(&mut self, msg: UpdateConfigs) -> ResponseActFuture<Self, (), Error> {
         for config_option in msg.configs {
             match config_option.name.as_str() {
-                "name" | "logo_url" => self.configs.insert(config_option.name, config_option.value),
+                "name" | "logoUrl" => self.configs.insert(config_option.name, config_option.value),
                 _ => continue
             };
         }

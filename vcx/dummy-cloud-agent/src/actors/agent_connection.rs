@@ -241,6 +241,7 @@ impl AgentConnection {
                     .into_actor(slf)
             })
             .and_then(|(sender_vk, msg, msgs), slf, _| {
+                debug!("AgentConnection::handle_a2a_msg >> {:?}", msg);
                 match msg {
                     Some(A2AMessage::Version1(msg)) => {
                         match msg {
@@ -1426,7 +1427,7 @@ impl Handler<HandleAdminMessage> for AgentConnection {
                     forward_agent_detail_did: m.forward_agent_detail.did.clone(),
                     forward_agent_detail_endpoint: m.forward_agent_detail.endpoint.clone(),
                     agent_configs: self.agent_configs.iter().map(|(key, value)|(key.clone(), value.clone())).collect(),
-                    logo: self.agent_configs.get("logo").map_or_else(|| String::from("unknown"), |v| v.clone()),
+                    logo: self.agent_configs.get("logo_url").map_or_else(|| String::from("unknown"), |v| v.clone()),
                     name: self.agent_configs.get("name").map_or_else(|| String::from("unknown"), |v| v.clone()),
                 }
             }
@@ -1437,7 +1438,7 @@ impl Handler<HandleAdminMessage> for AgentConnection {
                 forward_agent_detail_did: "unknown".into(),
                 forward_agent_detail_endpoint: "unknown".into(),
                 agent_configs: self.agent_configs.iter().map(|(key, value)|(key.clone(), value.clone())).collect(),
-                logo: self.agent_configs.get("logo").map_or_else(|| String::from("unknown"), |v| v.clone()),
+                logo: self.agent_configs.get("logo_url").map_or_else(|| String::from("unknown"), |v| v.clone()),
                 name: self.agent_configs.get("name").map_or_else(|| String::from("unknown"), |v| v.clone()),
             }
         };
