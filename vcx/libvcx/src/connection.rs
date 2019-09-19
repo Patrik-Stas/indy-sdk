@@ -232,11 +232,15 @@ impl Connection {
             self.public_did = Some(settings::get_config_value(settings::CONFIG_INSTITUTION_DID)?);
         };
 
+        let webhookUrl = settings::get_config_value(settings::CONFIG_WEBHOOK_URL).ok();
+//            .map_or_else(|x| None, |v| Some(v));
+
         if let Ok(name) = settings::get_config_value(settings::CONFIG_INSTITUTION_NAME) {
             messages::update_data()
                 .to(&self.pw_did)?
                 .name(&name)?
                 .logo_url(&settings::get_config_value(settings::CONFIG_INSTITUTION_LOGO_URL)?)?
+                .webhook_url(&webhookUrl)?
                 .use_public_did(&self.public_did)?
                 .send_secure()
                 .map_err(|err| err.extend("Cannot update agent profile"))?;
@@ -539,8 +543,8 @@ pub fn connect(handle: u32, options: Option<String>) -> VcxResult<u32> {
 
     CONNECTION_MAP.get_mut(handle, |t| {
         debug!("establish connection {}", t.get_source_id());
-        t.create_agent_pairwise()?;
         t.update_agent_profile(&options_obj)?;
+        t.create_agent_pairwise()?;
         t.connect(&options_obj)
     })
 }

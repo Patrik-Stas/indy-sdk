@@ -1,6 +1,7 @@
 import {CredentialDef} from "../dist/src/api/credential-def";
 import {IssuerCredential} from "../dist/src/api/issuer-credential";
 import {Proof} from "../dist/src/api/proof";
+import {vcxUpdateWebhookUrl} from "../dist/src/api/utils";
 import {Connection} from "../dist/src/api/connection";
 import {Schema} from "./../dist/src/api/schema";
 import {StateType, ProofState} from "../dist/src";
@@ -18,7 +19,8 @@ const provisionConfig = {
     'wallet_name': `node_vcx_demo_faber_wallet_${utime}`,
     'wallet_key': '123',
     'payment_method': 'null',
-    'enterprise_seed': '000000000000000000000000Trustee1'
+    'enterprise_seed': '000000000000000000000000Trustee1',
+    'webhook_url': "http://localhost:8084/7b1938e7-186e-4dea-91b8-a74b02a5df4c"
 };
 
 const logLevel = 'error';
@@ -31,11 +33,13 @@ async function run() {
 
     logger.info("#1 Provision an agent and wallet, get back configuration details");
     logger.debug(`Config used to provision agent in agency: ${JSON.stringify(provisionConfig, null, 2)}`);
-    let config = await demoCommon.provisionAgentInAgency(provisionConfig);
+    let vcxAgentConfiguration = await demoCommon.provisionAgentInAgency(provisionConfig);
+    logger.info(`Agent provisioning produced following configuration: ${JSON.stringify(vcxAgentConfiguration, null, 2)}`)
 
     logger.info("#2 Initialize libvcx with new configuration");
-    logger.debug(`${JSON.stringify(config, null, 2)}`);
-    await demoCommon.initVcxWithProvisionedAgentConfig(config);
+    logger.debug(`${JSON.stringify(vcxAgentConfiguration, null, 2)}`);
+    await demoCommon.initVcxWithProvisionedAgentConfig(vcxAgentConfiguration);
+    // await vcxUpdateWebhookUrl({webhookUrl: "http://noti.fy/me/here"})
 
     logger.info("#3 Create a new schema on the ledger");
     const version = `${getRandomInt(1, 101)}.${getRandomInt(1, 101)}.${getRandomInt(1, 101)}`;
@@ -68,6 +72,9 @@ async function run() {
     const cred_def_id = await cred_def.getCredDefId();
     const credDefHandle = cred_def.handle;
     logger.info(`Created credential with id ${cred_def_id} and handle ${credDefHandle}`);
+
+    const connectionFirstEver = await Connection.create({id: 'foobar'});
+    await connectionFirstEver.connect('{"use_public_did": true}');
 
     logger.info("#5 Create a connection to alice and print out the invite details");
     const connectionToAlice = await Connection.create({id: 'alice'});
@@ -133,9 +140,9 @@ async function run() {
     }
 
     const proofAttributes = [
-        {'name': 'name', 'restrictions': [{'issuer_did': config['institution_did']}]},
-        {'name': 'date', 'restrictions': [{'issuer_did': config['institution_did']}]},
-        {'name': 'degree', 'restrictions': [{'issuer_did': config['institution_did']}]}
+        {'name': 'name', 'restrictions': [{'issuer_did': vcxAgentConfiguration['institution_did']}]},
+        {'name': 'date', 'restrictions': [{'issuer_did': vcxAgentConfiguration['institution_did']}]},
+        {'name': 'degree', 'restrictions': [{'issuer_did': vcxAgentConfiguration['institution_did']}]}
     ];
 
     logger.info("#19 Create a Proof object");
