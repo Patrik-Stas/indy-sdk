@@ -148,6 +148,18 @@ export function shutdownVcx (deleteWallet: boolean): number {
 }
 
 export interface IUpdateInstitutionConfigs {
+    webhookUrl: string,
+}
+
+export function vcxUpdateWebhookUrl ({ webhookUrl }: IUpdateInstitutionConfigs): number {
+    const rc = rustAPI().vcx_update_webhook_url(webhookUrl)
+    if (rc) {
+        throw new VCXInternalError(rc)
+    }
+    return rc
+}
+
+export interface IUpdateInstitutionConfigs {
   name: string,
   logoUrl: string
 }

@@ -132,6 +132,7 @@ pub struct Config {
     storage_config: Option<String>,
     storage_credentials: Option<String>,
     pool_config: Option<String>,
+    webhook_url: Option<String>,
 }
 
 
@@ -166,6 +167,9 @@ pub fn connect_register_provision(config: &str) -> VcxResult<String> {
     }
     if let Some(pool_config) = &my_config.pool_config {
         settings::set_config_value(settings::CONFIG_POOL_CONFIG, pool_config);
+    }
+    if let Some(webhook_url) = &my_config.webhook_url {
+        settings::set_config_value(settings::CONFIG_WEBHOOK_URL, webhook_url);
     }
 
     wallet::init_wallet(&wallet_name, my_config.wallet_type.as_ref().map(String::as_str),
@@ -228,6 +232,9 @@ pub fn connect_register_provision(config: &str) -> VcxResult<String> {
     }
     if let Some(_pool_config) = &my_config.pool_config {
         final_config["pool_config"] = json!(_pool_config);
+    }
+    if let Some(_webhook_url) = &my_config.webhook_url {
+        final_config["webhook_url"] = json!(_webhook_url);
     }
 
     wallet::close_wallet()?;
