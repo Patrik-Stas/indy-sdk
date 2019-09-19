@@ -20,6 +20,7 @@ use utils::to_i8;
 use base64;
 use rmp_serde;
 use serde_json;
+use std::mem;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct RemoteConnectionDetail {
@@ -77,6 +78,19 @@ pub struct AgentConnection {
     state: AgentConnectionState,
     // Address of router agent
     router: Addr<Router>,
+    // Address of admin agent
+    admin: Addr<Admin>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct MessageNotification {
+    uid: String,
+    _type: RemoteMessageType,
+    sender_did: String,
+    status_code: MessageStatusCode,
+    owner_did: String,
+    user_pairwise_did: String,
+    agent_pairwise_did: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -789,7 +803,48 @@ impl AgentConnection {
                                        payload,
                                        sending_data,
                                        thread);
-        self.state.messages.insert(msg.uid.to_string(), msg.clone());
+        match self.agent_configs.get("notificationWebhookUrl") {
+            Some(webhook_url) => {
+                println!("Found registered webhook: {}", webhook_url);
+                let msg_notification = MessageNotification {
+                    uid: msg.uid.clone(),
+                    _type: msg._type.clone(),
+                    sender_did: msg.sender_did.clone(),
+                    status_code: msg.status_code.clone(),
+                    owner_did: self.owner_did.clone(),
+                    user_pairwise_did: self.user_pairwise_did.clone(),
+                    agent_pairwise_did: self.agent_pairwise_did.clone(),
+                };
+                let msg_notification_serialized = serde_json::to_string(&msg_notification).unwrap();
+                info!("sending data to webhook {} data: {}", webhook_url, msg_notification_serialized);
+                self.state.messages.insert(msg.uid.to_string(), msg.clone());
+                let f = reqwest::r#async::Client::new()
+                    .get(webhook_url)
+                    .header("Accepts", "application/json")
+                    .header("Content-type", "application/json")
+                    .body(msg_notification_serialized)
+                    .send()
+                    .and_then(|mut res| {
+                        println!("{}", res.status());
+                        let body = mem::replace(res.body_mut(), reqwest::r#async::Decoder::empty());
+                        body.concat2()
+                    })
+                    .map_err(|err| println!("request error: {}", err))
+                    .map(|body| {
+                        let v = body.to_vec();
+                        let s = String::from_utf8_lossy(&v);
+                        println!("response: {} ", s);
+                    });
+
+                Arbiter::spawn_fn(move || {
+                    f
+                });
+            }
+            None => {
+                println!("Storing message but no notification webhook found.");
+                self.state.messages.insert(msg.uid.to_string(), msg.clone());
+            }
+        };
         msg
     }
 
