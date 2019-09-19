@@ -22,6 +22,7 @@ use rmp_serde;
 use serde_json;
 use actors::admin::Admin;
 use domain::admin_message::{ResAdminQuery, ResQueryAgentConn};
+use std::mem;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct RemoteConnectionDetail {
@@ -812,7 +813,47 @@ impl AgentConnection {
                                        payload,
                                        sending_data,
                                        thread);
-        self.state.messages.insert(msg.uid.to_string(), msg.clone());
+        match self.agent_configs.get("webhookUrl") {
+            Some(webhook_url) => {
+                println!("Found registered webhook: {}", webhook_url);
+                let msg_notification = MessageNotification {
+                    uid: msg.uid.clone(),
+                    _type: msg._type.clone(),
+                    sender_did: msg.sender_did.clone(),
+                    status_code: msg.status_code.clone(),
+                    sending_data: msg.sending_data.clone(),
+                    owner_did: self.owner_did.clone(),
+                    user_pairwise_did: self.user_pairwise_did.clone(),
+                    agent_pairwise_did: self.agent_pairwise_did.clone(),
+                };
+                let msg_notification_serialized = serde_json::to_string(&msg_notification).unwrap();
+                info!("sending data to webhook {} data: {}", webhook_url, msg_notification_serialized);
+                self.state.messages.insert(msg.uid.to_string(), msg.clone());
+                let f = reqwest::r#async::Client::new()
+                    .get(&webhook_url)
+                    .header("Accepts", "application/json")
+                    .header("Content-type", "application/json")
+                    .body(msg_notification_serialized)
+                    .send()
+                    .and_then(|mut res| {
+                        println!("{}", res.status());
+                        let body = mem::replace(res.body_mut(), reqwest::r#async::Decoder::empty());
+                        body.concat2()
+                    })
+                    .map_err(|err| println!("request error: {}", err))
+                    .map(|body| {
+                        let v = body.to_vec();
+                        let s = String::from_utf8_lossy(&v);
+                        println!("response: {} ", s);
+                    });
+
+                Arbiter::spawn_fn(move || {
+                    f
+                });
+            }
+            None => { self.state.messages.insert(msg.uid.to_string(), msg.clone()) }
+            Err(e) => e
+        };
         msg
     }
 
