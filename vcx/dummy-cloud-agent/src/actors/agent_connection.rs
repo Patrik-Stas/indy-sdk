@@ -81,7 +81,18 @@ pub struct AgentConnection {
     // Address of router agent
     router: Addr<Router>,
     // Address of admin agent
-    admin: Addr<Admin>
+    admin: Addr<Admin>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct MessageNotification {
+    uid: String,
+    _type: RemoteMessageType,
+    sender_did: String,
+    status_code: MessageStatusCode,
+    owner_did: String,
+    user_pairwise_did: String,
+    agent_pairwise_did: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -123,7 +134,7 @@ impl AgentConnection {
                         messages: HashMap::new(),
                     },
                     router: router.clone(),
-                    admin: admin.clone()
+                    admin: admin.clone(),
                 };
 
                 let agent_connection = agent_connection.start();
@@ -202,7 +213,7 @@ impl AgentConnection {
                         messages: state.messages,
                     },
                     router: router.clone(),
-                    admin: admin.clone()
+                    admin: admin.clone(),
                 };
 
                 let agent_connection = agent_connection.start();
@@ -609,7 +620,7 @@ impl AgentConnection {
                 let msg = A2ConnMessage::MessagesByConnection(
                     MessagesByConnection {
                         did: self.user_pairwise_did.clone(),
-                        msgs: self.get_messages(msg)
+                        msgs: self.get_messages(msg),
                     });
                 ok!(msg)
             }
@@ -618,7 +629,7 @@ impl AgentConnection {
                 let msg = A2ConnMessage::MessageStatusUpdatedByConnection(
                     UidByConnection {
                         uids,
-                        pairwise_did: self.user_pairwise_did.clone()
+                        pairwise_did: self.user_pairwise_did.clone(),
                     });
                 ok!(msg)
             }
@@ -696,7 +707,7 @@ impl AgentConnection {
                     forward_agent_detail: msg_detail.sender_agency_detail.clone(),
                     agent_detail: AgentDetail {
                         did: msg_detail.sender_detail.did.clone(),
-                        verkey: msg_detail.sender_detail.verkey.clone()
+                        verkey: msg_detail.sender_detail.verkey.clone(),
                     },
                     agent_key_dlg_proof: msg_detail.sender_detail.agent_key_dlg_proof.clone(),
                 });
@@ -757,7 +768,7 @@ impl AgentConnection {
                     forward_agent_detail: msg_detail.sender_agency_detail.clone(),
                     agent_detail: AgentDetail {
                         did: msg_detail.sender_detail.did.clone(),
-                        verkey: msg_detail.sender_detail.verkey.clone()
+                        verkey: msg_detail.sender_detail.verkey.clone(),
                     },
                     agent_key_dlg_proof: msg_detail.sender_detail.agent_key_dlg_proof.clone(),
                 });
@@ -813,7 +824,7 @@ impl AgentConnection {
                                        payload,
                                        sending_data,
                                        thread);
-        match self.agent_configs.get("webhookUrl") {
+        match self.agent_configs.get("notificationWebhookUrl") {
             Some(webhook_url) => {
                 println!("Found registered webhook: {}", webhook_url);
                 let msg_notification = MessageNotification {
@@ -821,7 +832,6 @@ impl AgentConnection {
                     _type: msg._type.clone(),
                     sender_did: msg.sender_did.clone(),
                     status_code: msg.status_code.clone(),
-                    sending_data: msg.sending_data.clone(),
                     owner_did: self.owner_did.clone(),
                     user_pairwise_did: self.user_pairwise_did.clone(),
                     agent_pairwise_did: self.agent_pairwise_did.clone(),
@@ -830,7 +840,7 @@ impl AgentConnection {
                 info!("sending data to webhook {} data: {}", webhook_url, msg_notification_serialized);
                 self.state.messages.insert(msg.uid.to_string(), msg.clone());
                 let f = reqwest::r#async::Client::new()
-                    .get(&webhook_url)
+                    .get(webhook_url)
                     .header("Accepts", "application/json")
                     .header("Content-type", "application/json")
                     .body(msg_notification_serialized)
@@ -851,8 +861,10 @@ impl AgentConnection {
                     f
                 });
             }
-            None => { self.state.messages.insert(msg.uid.to_string(), msg.clone()) }
-            Err(e) => e
+            None => {
+                println!("Storing message but no notification webhook found.");
+                self.state.messages.insert(msg.uid.to_string(), msg.clone());
+            }
         };
         msg
     }
@@ -1224,7 +1236,7 @@ impl AgentConnection {
 
                 let payload_msg = PayloadV1 {
                     type_: PayloadTypes::build_v1(PayloadKinds::from(type_), "json"),
-                    msg: to_i8(&msg)
+                    msg: to_i8(&msg),
                 };
 
                 let message = ftry!(rmp_serde::to_vec_named(&payload_msg));
@@ -1262,7 +1274,7 @@ impl AgentConnection {
             ProtocolTypes::V1 => A2AMessage::Version1(A2AMessageV1::Forward(ForwardV1 { fwd: fwd.to_string(), msg: message })),
             ProtocolTypes::V2 => A2AMessage::Version2(A2AMessageV2::Forward(ForwardV2 {
                 fwd: fwd.to_string(),
-                msg: serde_json::from_slice(message.as_slice())?
+                msg: serde_json::from_slice(message.as_slice())?,
             }))
         };
 
@@ -1295,7 +1307,7 @@ impl AgentConnection {
                 let msg_created = MessageCreated { uid: msg.uid.clone() };
                 let msg_detail = ConnectionRequestMessageDetailResp {
                     invite_detail,
-                    url_to_invite_detail: "".to_string() // format!("{}/agency/invite/{}?msg_uid{}", AGENCY_DOMAIN_URL_PREFIX, self.agent_pairwise_did, msg_uid)
+                    url_to_invite_detail: "".to_string(), // format!("{}/agency/invite/{}?msg_uid{}", AGENCY_DOMAIN_URL_PREFIX, self.agent_pairwise_did, msg_uid)
                 };
 
                 vec![A2AMessage::Version1(A2AMessageV1::MessageCreated(msg_created)),
@@ -1404,7 +1416,7 @@ impl AgentConnection {
                         reply_to_msg_id: reply_to.map(String::from),
                         msg: serde_json::from_slice(&msg)?,
                         title,
-                        detail
+                        detail,
                     };
 
                     vec![A2AMessage::Version2(A2AMessageV2::SendRemoteMessage(msg))]
@@ -1467,7 +1479,7 @@ impl Handler<HandleAdminMessage> for AgentConnection {
                     forward_agent_detail_verkey: m.forward_agent_detail.verkey.clone(),
                     forward_agent_detail_did: m.forward_agent_detail.did.clone(),
                     forward_agent_detail_endpoint: m.forward_agent_detail.endpoint.clone(),
-                    agent_configs: self.agent_configs.iter().map(|(key, value)|(key.clone(), value.clone())).collect(),
+                    agent_configs: self.agent_configs.iter().map(|(key, value)| (key.clone(), value.clone())).collect(),
                     logo: self.agent_configs.get("logo_url").map_or_else(|| String::from("unknown"), |v| v.clone()),
                     name: self.agent_configs.get("name").map_or_else(|| String::from("unknown"), |v| v.clone()),
                 }
@@ -1478,7 +1490,7 @@ impl Handler<HandleAdminMessage> for AgentConnection {
                 forward_agent_detail_verkey: "unknown".into(),
                 forward_agent_detail_did: "unknown".into(),
                 forward_agent_detail_endpoint: "unknown".into(),
-                agent_configs: self.agent_configs.iter().map(|(key, value)|(key.clone(), value.clone())).collect(),
+                agent_configs: self.agent_configs.iter().map(|(key, value)| (key.clone(), value.clone())).collect(),
                 logo: self.agent_configs.get("logo_url").map_or_else(|| String::from("unknown"), |v| v.clone()),
                 name: self.agent_configs.get("name").map_or_else(|| String::from("unknown"), |v| v.clone()),
             }
@@ -1489,7 +1501,7 @@ impl Handler<HandleAdminMessage> for AgentConnection {
 
 enum MessageHandlerRole {
     Owner,
-    Remote
+    Remote,
 }
 
 #[cfg(test)]

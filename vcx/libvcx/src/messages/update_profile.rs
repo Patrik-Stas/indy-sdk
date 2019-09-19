@@ -67,10 +67,12 @@ impl UpdateProfileDataBuilder {
         Ok(self)
     }
 
-    pub fn webhook_url(&mut self, url: &str) -> VcxResult<&mut Self> {
-        validation::validate_url(url)?;
-        let config = ConfigOption { name: "notificationWebhookUrl".to_string(), value: url.to_string() };
-        self.configs.push(config);
+    pub fn webhook_url(&mut self, url: &Option<String>) -> VcxResult<&mut Self> {
+        if let Some(x) = url {
+            validation::validate_url(x)?;
+            let config = ConfigOption { name: "notificationWebhookUrl".to_string(), value: x.to_string() };
+            self.configs.push(config);
+        }
         Ok(self)
     }
 
