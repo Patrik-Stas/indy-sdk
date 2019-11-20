@@ -146,6 +146,8 @@ impl ForwardAgentConnection {
                     .map(|(my_verkey, their_verkey)| (my_did, my_verkey, their_did, their_verkey, state))
             })
             .and_then(move |(my_did, my_verkey, their_did, their_verkey, state)| {
+                let stateClone = state.agent.clone();
+                debug!("Going to restore agent using state = {:?}", &stateClone);
                 if let Some((agent_wallet_id, agent_wallet_key, agent_did)) = state.agent.clone() {
                     Agent::restore(&agent_wallet_id,
                                    &agent_wallet_key,
@@ -162,7 +164,8 @@ impl ForwardAgentConnection {
                 }
                     .map(|_| (my_did, my_verkey, their_did, their_verkey, state,
                               router, admin, forward_agent_detail, wallet_storage_config))
-                    .map_err(|err| err.context("Can't start Agent for Forward Agent Connection.").into())
+//                    .map_err(move |err| err.context(format!("Can't start Agent for Forward Agent Connection using agent_wallet_id {:?}.", &stateClone)).into())
+//                    .map_err(move |err| err.context(format!("Can't start Agent for Forward Agent Connection using agent_wallet_id {:?}.", &stateClone)).into())
             })
             .and_then(move |(my_did, my_verkey, their_did, their_verkey, state,
                                 router, admin, forward_agent_detail, wallet_storage_config)| {

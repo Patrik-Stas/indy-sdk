@@ -173,6 +173,7 @@ impl ForwardAgent {
                 let futures: Vec<_> = pairwise_list
                     .iter()
                     .map(move |pairwise| {
+                        debug!("Restorin forward agent connection {:?}", pairwise);
                         ForwardAgentConnection::restore(wallet_handle,
                                                         pairwise.their_did.clone(),
                                                         forward_agent_detail.clone(),
@@ -184,7 +185,7 @@ impl ForwardAgent {
 
                 future::join_all(futures)
                     .map(|_| ())
-                    .map_err(|err| err.context("Can't restore Forward Agent connections").into())
+//                    .map_err(|err| err.context("Can't restore Forward Agent connections").into())
             })
             .into_box()
     }

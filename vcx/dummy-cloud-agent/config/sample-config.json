@@ -1,7 +1,7 @@
 {
   "app": {
     "prefix": "/agency",
-    "enable_admin_api": false
+    "enable_admin_api": true
   },
   "forward_agent": {
     "did": "VsKV7grR1BUE29mG2Fm2kX",
@@ -12,10 +12,9 @@
   },
   "server": {
     "addresses": [
-      "127.0.0.1:8080",
-      "127.0.0.1:8081"
+      "127.0.0.1:8080"
     ],
-    "workers": 2
+    "workers": 8
   },
   "wallet_storage": {
     "config": null,

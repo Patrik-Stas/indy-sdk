@@ -131,8 +131,9 @@ impl Agent {
 
         future::ok(())
             .and_then(move |_| {
+                debug!("Opening agent wallet {:?}", &wallet_config);
                 wallet::open_wallet(wallet_config.as_ref(), wallet_credentials.as_ref())
-                    .map_err(|err| err.context("Can't open Agent wallet.").into())
+                    .map_err(move |err| err.context(format!("Can't open Agent wallet using config {:?}", wallet_config.clone())).into())
             })
             .and_then(move |wallet_handle| {
                 did::key_for_local_did(wallet_handle, &did)
@@ -152,6 +153,7 @@ impl Agent {
                 // Resolve information about existing connections from the wallet
                 // and start Agent Connection actor for each exists connection
 
+                debug!("Agent restore. Agent configs to be loaded: {:?}", metadata);
                 let configs: HashMap<String, String> = serde_json::from_str(&metadata).expect("Can't restore Agent config.");
 
                 Agent::_restore_connections(wallet_handle,
