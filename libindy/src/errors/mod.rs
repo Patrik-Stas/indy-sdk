@@ -69,7 +69,7 @@ pub enum IndyErrorKind {
     // Wallet errors
     #[fail(display = "Invalid wallet handle was passed")]
     InvalidWalletHandle,
-    #[fail(display = "Unknown wallet storage type")]
+    #[fail(display = "Unknown wallet storage type hahah")]
     UnknownWalletStorageType,
     #[fail(display = "Wallet storage type already registered")]
     WalletStorageTypeAlreadyRegistered,
@@ -347,6 +347,7 @@ impl From<ErrorCode> for IndyResult<()> {
 
 impl From<ErrorCode> for IndyError {
     fn from(err: ErrorCode) -> IndyError {
+        error!("{:#?}", err);
         err_msg(err.into(), "Plugin returned error".to_string())
     }
 }

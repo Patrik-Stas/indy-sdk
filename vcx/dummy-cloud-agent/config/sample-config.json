@@ -14,12 +14,23 @@
     "addresses": [
       "127.0.0.1:8080"
     ],
-    "workers": 8
+    "workers": 1
   },
   "wallet_storage": {
-    "config": null,
-    "credentials": null,
-    "type": null
+    "config": {
+      "url": "localhost:5432",
+      "max_connections" : 100,
+      "min_idle_time" : "",
+      "connection_timeout" :  "",
+      "wallet_scheme": "MultiWalletSingleTable"
+    },
+    "credentials": {
+      "account": "postgres",
+      "password": "mysecretpassword",
+      "admin_account": "postgres",
+      "admin_password": "mysecretpassword"
+    },
+    "type": "postgres_storage"
   },
   "protocol_type": "1.0"
 }

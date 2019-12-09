@@ -28,7 +28,7 @@ impl ForwardAgent {
     pub fn create_or_restore(config: ForwardAgentConfig,
                              wallet_storage_config: WalletStorageConfig,
                              admin: Addr<Admin>) -> ResponseFuture<Addr<ForwardAgent>, Error> {
-        trace!("ForwardAgent::create_or_restore >> {:?} {:?}", config, wallet_storage_config);
+        debug!("ForwardAgent::create_or_restore >> {:?} {:?}", config, wallet_storage_config);
         let admin1 = admin.clone();
         let admin2 = admin.clone();
         future::ok(())
@@ -148,7 +148,7 @@ impl ForwardAgent {
                             wallet_storage_config: WalletStorageConfig,
                             router: Addr<Router>,
                             admin: Addr<Admin>) -> ResponseFuture<(), Error> {
-        trace!("ForwardAgent::_restore_connections >> {:?}", wallet_handle);
+        debug!("ForwardAgent::_restore_connections >> {:?}", wallet_handle);
 
         future::ok(())
             .and_then(move |_| {

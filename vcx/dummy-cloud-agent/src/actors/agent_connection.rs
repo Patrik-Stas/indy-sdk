@@ -113,7 +113,7 @@ impl AgentConnection {
     pub fn create(config: AgentConnectionConfig,
                   router: Addr<Router>,
                   admin: Addr<Admin>) -> ResponseFuture<(), Error> {
-        trace!("AgentConnection::create >> {:?}", config);
+        debug!("AgentConnection::create >> {:?}", config);
         future::ok(())
             .and_then(move |_| {
                 let agent_connection = AgentConnection {
@@ -171,7 +171,7 @@ impl AgentConnection {
                    router: Addr<Router>,
                    admin: Addr<Admin>,
                    agent_configs: HashMap<String, String>) -> BoxedFuture<(), Error> {
-        trace!("AgentConnection::restore >> {:?}", wallet_handle);
+        debug!("AgentConnection::restore >> {:?}", wallet_handle);
 
         let owner_did = owner_did.to_string();
         let owner_verkey = owner_verkey.to_string();

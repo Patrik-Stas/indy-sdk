@@ -49,6 +49,7 @@ use std::collections::HashMap;
 use std::ffi::CString;
 use std::sync::Mutex;
 use std::str;
+use utils::logger::LibindyDefaultLogger;
 
 pub static POSTGRES_STORAGE_NAME: &str = "postgres_storage";
 
@@ -56,6 +57,7 @@ pub static POSTGRES_STORAGE_NAME: &str = "postgres_storage";
 #[no_mangle]
 pub extern fn postgresstorage_init() -> libindy::ErrorCode {
     let postgres_storage_name = CString::new(POSTGRES_STORAGE_NAME).unwrap();
+    LibindyDefaultLogger::init(None);
 
     libindy::wallet::register_wallet_storage(
         postgres_storage_name.as_ptr(),
@@ -145,6 +147,7 @@ impl PostgresWallet {
     pub extern fn init(config: *const c_char, credentials: *const c_char) -> ErrorCode {
         check_useful_c_str!(config, ErrorCode::CommonInvalidState);
         check_useful_c_str!(credentials, ErrorCode::CommonInvalidState);
+        debug!("init >> config={}, credentials={}", config, credentials);
 
         // create Postgres database, and create schema
         let storage_type = ::postgres_storage::PostgresStorageType::new();
@@ -155,7 +158,10 @@ impl PostgresWallet {
             Err(err) => {
                 match err {
                     WalletStorageError::AlreadyExists => ErrorCode::WalletAlreadyExistsError,
-                    _ => ErrorCode::WalletStorageError
+                    _ => {
+                        panic!("Init storage failed: {:?}", err);
+                        ErrorCode::WalletStorageError
+                    }
                 }
             }
         }
@@ -169,6 +175,7 @@ impl PostgresWallet {
         check_useful_c_str!(config, ErrorCode::CommonInvalidParam2);
         check_useful_c_str!(credentials, ErrorCode::CommonInvalidParam3);
         check_useful_c_str!(metadata, ErrorCode::CommonInvalidParam4);
+        debug!("create >>{}", id);
 
         // create Postgres database, create schema, and insert metadata
         // ... or ... insert metadata
@@ -180,7 +187,10 @@ impl PostgresWallet {
             Err(err) => {
                 match err {
                     WalletStorageError::AlreadyExists => ErrorCode::WalletAlreadyExistsError,
-                    _ => ErrorCode::WalletStorageError
+                    _ => {
+                        panic!("Init storage failed: {:?}", err);
+                        ErrorCode::WalletStorageError
+                    }
                 }
             }
         }
@@ -194,6 +204,8 @@ impl PostgresWallet {
         check_useful_c_str!(id, ErrorCode::CommonInvalidParam1);
         check_useful_c_str!(config, ErrorCode::CommonInvalidParam2);
         check_useful_c_str!(credentials, ErrorCode::CommonInvalidParam3);
+        debug!("open >>{}, POSTGRES_OPEN_WALLETS={} POSTGRES_ACTIVE_RECORDS={}", id, POSTGRES_OPEN_WALLETS.lock().unwrap().keys().len(), POSTGRES_ACTIVE_RECORDS.lock().unwrap().keys().len());
+
 
         // open wallet and return handle
         // PostgresStorageType::open_storage(), returns a PostgresStorage that goes into the handle
@@ -211,7 +223,8 @@ impl PostgresWallet {
         let phandle = match storage_type.open_storage(&id, Some(&config), Some(&credentials))  {
             Ok(phandle) => phandle,
             Err(_err) => {
-                return ErrorCode::WalletNotFoundError;
+                panic!("Failed to open wallet: {:?}", _err);
+//                return ErrorCode::WalletNotFoundError;
             }
         };
 
@@ -246,6 +259,7 @@ impl PostgresWallet {
         check_useful_c_str!(id, ErrorCode::CommonInvalidState);
         check_useful_c_byte_array!(value, value_len, ErrorCode::CommonInvalidState, ErrorCode::CommonInvalidState);
         check_useful_c_str!(tags_json, ErrorCode::CommonInvalidState);
+        debug!("add_record >>");
 
         let handles = POSTGRES_OPEN_WALLETS.lock().unwrap();
 
@@ -317,6 +331,7 @@ impl PostgresWallet {
         check_useful_c_str!(type_, ErrorCode::CommonInvalidState);
         check_useful_c_str!(id, ErrorCode::CommonInvalidState);
         check_useful_c_str!(options_json, ErrorCode::CommonInvalidState);
+        debug!("get_record >>");
 
         let handles = POSTGRES_OPEN_WALLETS.lock().unwrap();
 
@@ -1087,10 +1102,10 @@ mod tests {
         assert_eq!(err, ErrorCode::Success);
 
         // delete wallet
-        let err = PostgresWallet::delete(id.as_ptr(), 
-                                            config.as_ref().map_or(ptr::null(), |x| x.as_ptr()), 
-                                            credentials.as_ref().map_or(ptr::null(), |x| x.as_ptr()));
-        assert_eq!(err, ErrorCode::Success);
+//        let err = PostgresWallet::delete(id.as_ptr(),
+//                                            config.as_ref().map_or(ptr::null(), |x| x.as_ptr()),
+//                                            credentials.as_ref().map_or(ptr::null(), |x| x.as_ptr()));
+//        assert_eq!(err, ErrorCode::Success);
 
         // open wallet - should return error
         let err = PostgresWallet::open(id.as_ptr(), 

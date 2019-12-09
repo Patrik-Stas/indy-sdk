@@ -117,7 +117,7 @@ impl WalletService {
                       config: &Config,
                       credentials: &Credentials,
                       (key_data, master_key): (&KeyDerivationData, &MasterKey)) -> IndyResult<Keys> {
-        trace!("create_wallet >>> config: {:?}, credentials: {:?}", config, secret!(credentials));
+        trace!("create_wallet >>> config: {:?}, credentials: {:?}", config, credentials);
 
         let storage_types = self.storage_types.borrow();
 
@@ -126,6 +126,7 @@ impl WalletService {
         let keys = Keys::new();
         let metadata = self._prepare_metadata(master_key, key_data, &keys)?;
 
+        trace!("PATRIK: Going to create storage... {:?} {:?} {:?}", &config.id, storage_config, storage_credentials);
         storage_type.create_storage(&config.id,
                                     storage_config
                                         .as_ref()
@@ -507,15 +508,20 @@ impl WalletService {
     }
 
     fn _get_config_and_cred_for_storage<'a>(config: &Config, credentials: &Credentials, storage_types: &'a HashMap<String, Box<dyn WalletStorageType>>) -> IndyResult<(&'a Box<dyn WalletStorageType>, Option<String>, Option<String>)> {
+        trace!("PATRIK _get_config_and_cred_for_storage");
         let storage_type = {
             let storage_type = config.storage_type
                 .as_ref()
                 .map(String::as_str)
                 .unwrap_or("default");
 
+            trace!("Requested storage type = {:?}", storage_type);
+            for (key, value) in storage_types.iter() {
+                trace!("Known storage type: {:?}", key);
+            }
             storage_types
                 .get(storage_type)
-                .ok_or_else(|| err_msg(IndyErrorKind::UnknownWalletStorageType, "Unknown wallet storage type"))?
+                .ok_or_else(|| err_msg(IndyErrorKind::UnknownWalletStorageType, format!("Unknown walletee storage type {:?}", storage_type)))?
         };
 
         let storage_config = config.storage_config.as_ref().map(SValue::to_string);
@@ -539,6 +545,7 @@ impl WalletService {
     }
 
     fn _open_storage(&self, config: &Config, credentials: &Credentials) -> IndyResult<Box<dyn WalletStorage>> {
+        trace!("PATRIK: _open_storage");
         let storage_types = self.storage_types.borrow();
         let (storage_type, storage_config, storage_credentials) =
             WalletService::_get_config_and_cred_for_storage(config, credentials, &storage_types)?;

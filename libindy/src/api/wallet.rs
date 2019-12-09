@@ -187,6 +187,7 @@ pub extern fn indy_create_wallet(command_handle: CommandHandle,
                                  credentials: *const c_char,
                                  cb: Option<extern fn(command_handle_: CommandHandle,
                                                       err: ErrorCode)>) -> ErrorCode {
+    trace!("PATRIK indy_create_wallet");
     trace!("indy_create_wallet: >>> command_handle: {:?}, config: {:?}, credentials: {:?}, cb: {:?}",
            command_handle, config, credentials, cb);
 

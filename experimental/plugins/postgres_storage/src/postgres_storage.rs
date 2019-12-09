@@ -366,10 +366,11 @@ impl StorageIterator for PostgresStorageIterator {
 pub struct PostgresConfig {
     url: String,
     tls: Option<String>,             // default off
-    max_connections: Option<u32>,    // default 5
-    min_idle_time: Option<u32>,      // default 0
-    connection_timeout: Option<u64>, // default 5
+    max_connections: Option<u32>,    // default 5 // max_size
+    min_idle_time: Option<u32>,      // default 0 // min_idle
+    connection_timeout: Option<u64>, // default 5 // idle_timeout
     wallet_scheme: Option<WalletScheme>,   // default DatabasePerWallet
+    max_lifetime: Option<u64>
 }
 
 impl PostgresConfig {
@@ -413,6 +414,13 @@ impl PostgresConfig {
         match &self.connection_timeout {
             Some(timeout) => *timeout,
             None => 5
+        }
+    }
+
+    fn max_lifetime(&self) -> u64 {
+        match &self.max_lifetime {
+            Some(timeout) => *timeout,
+            None => 30*60
         }
     }
 }
@@ -536,23 +544,36 @@ impl WalletStrategy for DatabasePerWalletStrategy {
         let url = PostgresStorageType::_postgres_url(id, &config, &credentials);
 
         // don't need a connection, but connect just to verify we can
-        let _conn = match postgres::Connection::connect(&url[..], config.tls()) {
-            Ok(conn) => conn,
-            Err(_) => return Err(WalletStorageError::NotFound)
-        };
+//        let _conn = match postgres::Connection::connect(&url[..], config.tls()) {
+//            Ok(conn) => conn,
+//            Err(e) => {
+//                return Err(WalletStorageError::NotFound)
+//                panic!("Failed to connect! {:?}", e)
+//            }
+//        };
 
         // TODO close _conn
-        
+
         let manager = match PostgresConnectionManager::new(&url[..], config.r2d2_tls()) {
             Ok(manager) => manager,
-            Err(_) => return Err(WalletStorageError::NotFound)
+            Err(e) => {
+//                return Err(WalletStorageError::NotFound)
+                panic!("Failed to create PostgresConnectionManager! {:?}", e)
+            }
         };
-        let pool = match r2d2::Pool::builder().min_idle(Some(config.min_idle_time())).max_size(config.max_connections()).idle_timeout(Some(Duration::new(config.connection_timeout(), 0))).build(manager) {
+        let pool = match r2d2::Pool::builder()
+            .max_lifetime(Some(Duration::new(config.max_lifetime(), 0)))
+            .min_idle(Some(config.min_idle_time()))
+            .max_size(config.max_connections())
+            .idle_timeout(Some(Duration::new(config.connection_timeout(), 0)))
+            .build(manager) {
             Ok(pool) => pool,
-            Err(_) => return Err(WalletStorageError::NotFound)
+            Err(e) => {
+                panic!("Failed to create pool! {:?}", e)
+            }
         };
 
-        Ok(Box::new(PostgresStorage { 
+        Ok(Box::new(PostgresStorage {
             pool: pool,
             wallet_id: id.to_string()
         }))
@@ -627,7 +648,7 @@ impl WalletStrategy for MultiWalletSingleTableStrategy {
             }
         }
         conn.finish()?;
-    
+
         let conn = match postgres::Connection::connect(&url[..], postgres::TlsMode::None) {
             Ok(conn) => conn,
             Err(error) => {
@@ -664,7 +685,7 @@ impl WalletStrategy for MultiWalletSingleTableStrategy {
                     Err(WalletStorageError::AlreadyExists)
                 } else {
                     Err(WalletStorageError::IOError(format!("Error occurred while inserting into metadata: {}", error)))
-                }    
+                }
             }
         };
         conn.finish()?;
@@ -672,43 +693,52 @@ impl WalletStrategy for MultiWalletSingleTableStrategy {
     }
     // open a wallet based on wallet storage strategy
     fn open_wallet(&self, id: &str, config: &PostgresConfig, credentials: &PostgresCredentials) -> Result<Box<PostgresStorage>, WalletStorageError> {
-
+        debug!("MultiWalletSingleTableStrategy open >> ");
         let url = PostgresStorageType::_postgres_url(_WALLETS_DB, &config, &credentials);
 
         // don't need a connection, but connect just to verify we can
-        let conn = match postgres::Connection::connect(&url[..], config.tls()) {
-            Ok(conn) => conn,
-            Err(_) => return Err(WalletStorageError::NotFound)
-        };
+//        let conn = match postgres::Connection::connect(&url[..], config.tls()) {
+//            Ok(conn) => conn,
+//            Err(_) => return Err(WalletStorageError::NotFound)
+//        };
 
         // select metadata for this wallet to ensure it exists
-        let res: Result<Vec<u8>, WalletStorageError> = {
-            let mut rows = conn.query(
-                "SELECT value FROM metadata WHERE wallet_id = $1",
-                &[&id]);
-            match rows.as_mut().unwrap().iter().next() {
-                Some(row) => Ok(row.get(0)),
-                None => Err(WalletStorageError::ItemNotFound)
-            }
-        };
-
-        match res {
-            Ok(_entity) => (),
-            Err(_) => return Err(WalletStorageError::NotFound)
-        };
+//        let res: Result<Vec<u8>, WalletStorageError> = {
+//            let mut rows = conn.query(
+//                "SELECT value FROM metadata WHERE wallet_id = $1",
+//                &[&id]);
+//            match rows.as_mut().unwrap().iter().next() {
+//                Some(row) => Ok(row.get(0)),
+//                None => Err(WalletStorageError::ItemNotFound)
+//            }
+//        };
+//
+//        match res {
+//            Ok(_entity) => (),
+//            Err(_) => return Err(WalletStorageError::NotFound)
+//        };
 
         // TODO close conn
 
+        debug!("MultiWalletSingleTableStrategy open >> building PostgresConnectionManager");
         let manager = match PostgresConnectionManager::new(&url[..], config.r2d2_tls()) {
             Ok(manager) => manager,
             Err(_) => return Err(WalletStorageError::NotFound)
         };
-        let pool = match r2d2::Pool::builder().min_idle(Some(config.min_idle_time())).max_size(config.max_connections()).idle_timeout(Some(Duration::new(config.connection_timeout(), 0))).build(manager) {
+
+        debug!("MultiWalletSingleTableStrategy open >> building connection pool");
+        let pool = match r2d2::Pool::builder()
+            .max_lifetime(Some(Duration::new(config.max_lifetime(), 0)))
+            .min_idle(Some(config.min_idle_time()))
+            .max_size(config.max_connections())
+            .idle_timeout(Some(Duration::new(config.connection_timeout(), 0)))
+            .build(manager) {
             Ok(pool) => pool,
             Err(_) => return Err(WalletStorageError::NotFound)
         };
 
-        Ok(Box::new(PostgresStorage { 
+        debug!("MultiWalletSingleTableStrategy open <<");
+        Ok(Box::new(PostgresStorage {
             pool: pool,
             wallet_id: id.to_string()
         }))

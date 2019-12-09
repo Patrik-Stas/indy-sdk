@@ -17,7 +17,7 @@ pub struct Router {
 
 impl Router {
     pub fn new(admin: Addr<Admin>) -> ResponseFuture<Addr<Router>, Error> {
-        trace!("Router::new >>");
+        debug!("Router::new >>");
         future::ok(())
             .and_then(move |_| {
                 let requester = Requester::new().start();

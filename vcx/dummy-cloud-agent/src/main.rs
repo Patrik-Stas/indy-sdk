@@ -36,6 +36,7 @@ use std::env;
 use std::fs::File;
 use actors::admin::Admin;
 use app::start_app_server;
+use indy::wallet::{load_storage_library, get_postgres_storage_plugin};
 
 #[macro_use]
 pub(crate) mod utils;
@@ -72,6 +73,9 @@ fn main() {
 fn _start(config_path: &str) {
     info!("Starting Indy Dummy Agent with config: {}", config_path);
 
+    info!("Loading postgress plugin");
+    load_storage_library(&get_postgres_storage_plugin());
+    info!("Loaded postgress plugin");
     let Config {
         app: app_config,
         forward_agent: forward_agent_config,

@@ -41,7 +41,7 @@ impl ForwardAgentConnection {
                   forward_agent_detail: ForwardAgentDetail,
                   wallet_storage_config: WalletStorageConfig,
                   admin: Addr<Admin>) -> BoxedFuture<(String, String), Error> {
-        trace!("ForwardAgentConnection::create >> {:?}, {:?}, {:?}, {:?}, {:?}",
+        debug!("ForwardAgentConnection::create >> {:?}, {:?}, {:?}, {:?}, {:?}",
                wallet_handle, their_did, their_verkey, forward_agent_detail, wallet_storage_config);
 
         future::ok(())
@@ -113,7 +113,7 @@ impl ForwardAgentConnection {
                    wallet_storage_config: WalletStorageConfig,
                    router: Addr<Router>,
                    admin: Addr<Admin>) -> BoxedFuture<(), Error> {
-        trace!("ForwardAgentConnection::restore >> {:?}, {:?}, {:?}, {:?}",
+        debug!("ForwardAgentConnection::restore >> {:?}, {:?}, {:?}, {:?}",
                wallet_handle, their_did, forward_agent_detail, wallet_storage_config);
 
         future::ok(())
@@ -123,6 +123,7 @@ impl ForwardAgentConnection {
                     .map_err(|err| err.context("Can't get Forward Agent Connection pairwise.").into())
             })
             .and_then(move |(pairwise_info, their_did)| {
+                debug!("For pairwise theirDid={} loaded pairwise info {:}", &their_did, &pairwise_info);
                 serde_json::from_str::<PairwiseInfo>(&pairwise_info)
                     .map(|pairwise_info| (pairwise_info, their_did))
                     .map_err(|err| err.context("Can't parse Forward Agent Connection pairwise info.").into())
@@ -147,7 +148,7 @@ impl ForwardAgentConnection {
             })
             .and_then(move |(my_did, my_verkey, their_did, their_verkey, state)| {
                 let stateClone = state.agent.clone();
-                debug!("Going to restore agent using state = {:?}", &stateClone);
+                debug!("Going to restore agent (their_did={}) using state = {:?}",&their_did, &stateClone);
                 if let Some((agent_wallet_id, agent_wallet_key, agent_did)) = state.agent.clone() {
                     Agent::restore(&agent_wallet_id,
                                    &agent_wallet_key,
