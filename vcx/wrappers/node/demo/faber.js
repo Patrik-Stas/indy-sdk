@@ -4,6 +4,7 @@ import {Proof} from "../dist/src/api/proof";
 import {vcxUpdateWebhookUrl} from "../dist/src/api/utils";
 import {Connection} from "../dist/src/api/connection";
 import {Schema} from "./../dist/src/api/schema";
+import {downloadMessages} from "./../dist/src/api/utils";
 import {StateType, ProofState} from "../dist/src";
 import sleepPromise from 'sleep-promise'
 import * as demoCommon from "./common";
@@ -23,6 +24,7 @@ const provisionConfig = {
     'wallet_key': '123',
     'payment_method': 'null',
     'enterprise_seed': '000000000000000000000000Trustee1',
+    "protocol_type": "2.0"
 };
 
 const logLevel = 'error';
@@ -45,7 +47,7 @@ async function run() {
         provisionConfig['storage_config'] = '{"url":"localhost:5432"}'
         provisionConfig['storage_credentials'] = '{"account":"postgres","password":"mysecretpassword","admin_account":"postgres","admin_password":"mysecretpassword"}'
     }
-    
+
     if (await isPortReachable(url.parse(optionalWebhook).port, {host: url.parse(optionalWebhook).hostname})) {
         provisionConfig['webhook_url'] = optionalWebhook
         logger.info(`Webhook server available! Will use webhook: ${optionalWebhook}`)
@@ -104,12 +106,16 @@ async function run() {
     logger.info(JSON.stringify(JSON.parse(details)));
     logger.info("\n\n******************\n\n");
 
+
     logger.info("#6 Polling agency and waiting for alice to accept the invitation. (start alice.py now)");
     let connection_state = await connectionToAlice.getState();
-    while (connection_state !== StateType.Accepted) {
-        await sleepPromise(2000);
+    while (connection_state !== StateType.RequestReceived) {
+        await sleepPromise(5000);
         await connectionToAlice.updateState();
         connection_state = await connectionToAlice.getState();
+        logger.info(JSON.stringify(connection_state))
+        let messages = await downloadMessages({})
+        logger.info(`Messages = ${JSON.stringify(messages)}`)
     }
     logger.info(`Connection to alice was Accepted!`);
 
@@ -139,6 +145,9 @@ async function run() {
         await sleepPromise(2000);
         await credentialForAlice.updateState();
         credential_state = await credentialForAlice.getState();
+        logger.info(JSON.stringify(credential_state))
+        let messages = await downloadMessages({})
+        logger.info(`Messages = ${JSON.stringify(messages)}`)
     }
 
     logger.info("#17 Issue credential to alice");
@@ -152,6 +161,9 @@ async function run() {
         await sleepPromise(2000);
         await credentialForAlice.updateState();
         credential_state = await credentialForAlice.getState();
+        logger.info(JSON.stringify(credential_state))
+        let messages = await downloadMessages({})
+        logger.info(`Messages = ${JSON.stringify(messages)}`)
     }
 
     const proofAttributes = [

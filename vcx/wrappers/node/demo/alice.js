@@ -2,6 +2,7 @@ import {DisclosedProof} from "../dist/src/api/disclosed-proof";
 import {Connection} from "../dist/src/api/connection";
 import {Credential} from "../dist/src/api/credential";
 import {StateType} from "../dist/src";
+import {downloadMessages} from "./../dist/src/api/utils";
 import readlineSync from 'readline-sync'
 import sleepPromise from 'sleep-promise'
 import * as demoCommon from './common'
@@ -19,7 +20,8 @@ const provisionConfig = {
     'wallet_name': `node_vcx_demo_alice_wallet_${utime}`,
     'wallet_key': '123',
     'payment_method': 'null',
-    'enterprise_seed': '000000000000000000000000Trustee1'
+    'enterprise_seed': '000000000000000000000000Trustee1',
+    "protocol_type": "2.0"
 };
 
 const logLevel = 'error';
@@ -62,27 +64,61 @@ async function run() {
 
     logger.info("#10 Convert to valid json and string and create a connection to faber");
     const connection_to_faber = await Connection.createWithInvite({id: 'faber', invite: JSON.stringify(jdetails)});
+    logger.info('Connecting to Faber.')
     await connection_to_faber.connect({data: '{"use_public_did": true}'});
+    logger.info('Updating connection state')
     await connection_to_faber.updateState();
+    logger.info(`Connection after update: ${JSON.stringify(connection_to_faber)}`)
+    logger.info(`Connection after update: ${JSON.stringify(await connection_to_faber.serialize())}`)
 
     logger.info("#11 Wait for faber.py to issue a credential offer");
-    await sleepPromise(5000);
+    await sleepPromise(10000);
     const offers = await Credential.getOffers(connection_to_faber);
     logger.info(`Alice found ${offers.length} credential offers.`);
     logger.debug(JSON.stringify(offers));
 
     // Create a credential object from the credential offer
     const credential = await Credential.create({sourceId: 'credential', offer: JSON.stringify(offers[0])});
+    await credential.updateState()
 
-    logger.info("#15 After receiving credential offer, send credential request");
+    credential_state = await credential.getState();
+    logger.info(`Credential instance created from credential offer is in state ${credential_state}`)
+
+
+    logger.info("Sending credential request!");
     await credential.sendRequest({connection: connection_to_faber, payment : 0});
 
-    logger.info("#16 Poll agency and accept credential offer from faber");
+    // await credential.updateState()
+    // credential_state = await credential.getState();
+    // logger.info(`Credential instance created from credential offer after update is in state ${credential_state}`)
+
+
+    await credential.updateState()
+    credential_state = await credential.getState();
+    logger.info(`After sending credential request, it is in state ${credential_state}`)
+
+
+    logger.info("Waiting credential to pass initialized state");
     let credential_state = await credential.getState();
+    while (credential_state === StateType.Initialized) {
+        await sleepPromise(2000);
+    }
+
+    logger.info("credential in OfferSent. We now send request");
+    if (credential_state === StateType.OfferSent) {
+        logger.info("Sending credential requst!");
+
+    }
+
+    logger.info("#16 Poll agency and accept credential from faber");
+    credential_state = await credential.getState();
     while (credential_state !== StateType.Accepted) {
         await sleepPromise(2000);
         await credential.updateState();
         credential_state = await credential.getState();
+        logger.info(JSON.stringify(credential_state))
+        let messages = await downloadMessages({})
+        logger.info(`Messages = ${JSON.stringify(messages)}`)
     }
 
     logger.info("#22 Poll agency for a proof request");
