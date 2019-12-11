@@ -2,6 +2,7 @@ import {DisclosedProof} from "../dist/src/api/disclosed-proof";
 import {Connection} from "../dist/src/api/connection";
 import {Credential} from "../dist/src/api/credential";
 import {StateType} from "../dist/src";
+import {downloadMessages} from "./../dist/src/api/utils";
 import readlineSync from 'readline-sync'
 import sleepPromise from 'sleep-promise'
 import * as demoCommon from './common'
@@ -19,7 +20,9 @@ const provisionConfig = {
     'wallet_name': `node_vcx_demo_alice_wallet_${utime}`,
     'wallet_key': '123',
     'payment_method': 'null',
-    'enterprise_seed': '000000000000000000000000Trustee1'
+    'enterprise_seed': '000000000000000000000000Trustee1',
+    "protocol_type": "2.0",
+    "communication_method": "aries"
 };
 
 const logLevel = 'error';
@@ -64,49 +67,6 @@ async function run() {
     const connection_to_faber = await Connection.createWithInvite({id: 'faber', invite: JSON.stringify(jdetails)});
     await connection_to_faber.connect({data: '{"use_public_did": true}'});
     await connection_to_faber.updateState();
-
-    logger.info("#11 Wait for faber.py to issue a credential offer");
-    await sleepPromise(5000);
-    const offers = await Credential.getOffers(connection_to_faber);
-    logger.info(`Alice found ${offers.length} credential offers.`);
-    logger.debug(JSON.stringify(offers));
-
-    // Create a credential object from the credential offer
-    const credential = await Credential.create({sourceId: 'credential', offer: JSON.stringify(offers[0])});
-
-    logger.info("#15 After receiving credential offer, send credential request");
-    await credential.sendRequest({connection: connection_to_faber, payment : 0});
-
-    logger.info("#16 Poll agency and accept credential offer from faber");
-    let credential_state = await credential.getState();
-    while (credential_state !== StateType.Accepted) {
-        await sleepPromise(2000);
-        await credential.updateState();
-        credential_state = await credential.getState();
-    }
-
-    logger.info("#22 Poll agency for a proof request");
-    const requests = await DisclosedProof.getRequests(connection_to_faber);
-
-    logger.info("#23 Create a Disclosed proof object from proof request");
-    const proof = await DisclosedProof.create({sourceId: 'proof', request: JSON.stringify(requests[0])});
-
-    logger.info("#24 Query for credentials in the wallet that satisfy the proof request");
-    const credentials = await proof.getCredentials();
-
-    // Use the first available credentials to satisfy the proof request
-    for (let i = 0; i < Object.keys(credentials['attrs']).length; i++) {
-        const attr = Object.keys(credentials['attrs'])[i];
-        credentials['attrs'][attr] = {
-            'credential': credentials['attrs'][attr][0]
-        }
-    }
-
-    logger.info("#25 Generate the proof");
-    await proof.generateProof({selectedCreds: credentials, selfAttestedAttrs: {}});
-
-    logger.info("#26 Send the proof to faber");
-    await proof.sendProof(connection_to_faber);
 }
 
 run();

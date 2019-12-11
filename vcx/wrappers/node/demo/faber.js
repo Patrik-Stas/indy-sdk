@@ -3,6 +3,7 @@ import {IssuerCredential} from "../dist/src/api/issuer-credential";
 import {Proof} from "../dist/src/api/proof";
 import {vcxUpdateWebhookUrl} from "../dist/src/api/utils";
 import {Connection} from "../dist/src/api/connection";
+import {downloadMessages} from "./../dist/src/api/utils";
 import {Schema} from "./../dist/src/api/schema";
 import {StateType, ProofState} from "../dist/src";
 import sleepPromise from 'sleep-promise'
@@ -23,6 +24,8 @@ const provisionConfig = {
     'wallet_key': '123',
     'payment_method': 'null',
     'enterprise_seed': '000000000000000000000000Trustee1',
+    "protocol_type": "2.0",
+    "communication_method": "aries"
 };
 
 const logLevel = 'error';
@@ -45,7 +48,7 @@ async function run() {
         provisionConfig['storage_config'] = '{"url":"localhost:5432"}'
         provisionConfig['storage_credentials'] = '{"account":"postgres","password":"mysecretpassword","admin_account":"postgres","admin_password":"mysecretpassword"}'
     }
-    
+
     if (await isPortReachable(url.parse(optionalWebhook).port, {host: url.parse(optionalWebhook).hostname})) {
         provisionConfig['webhook_url'] = optionalWebhook
         logger.info(`Webhook server available! Will use webhook: ${optionalWebhook}`)
@@ -110,84 +113,12 @@ async function run() {
         await sleepPromise(2000);
         await connectionToAlice.updateState();
         connection_state = await connectionToAlice.getState();
+
+        logger.info(JSON.stringify(connection_state))
+        let messages = await downloadMessages({})
+        logger.info(`Messages = ${JSON.stringify(messages)}`)
     }
     logger.info(`Connection to alice was Accepted!`);
-
-    const schema_attrs = {
-        'name': 'alice',
-        'date': '05-2018',
-        'degree': 'maths',
-    };
-
-    logger.info("#12 Create an IssuerCredential object using the schema and credential definition")
-
-    const credentialForAlice = await IssuerCredential.create({
-        attr: schema_attrs,
-        sourceId: 'alice_degree',
-        credDefHandle,
-        credentialName: 'cred',
-        price: '0'
-    });
-
-    logger.info("#13 Issue credential offer to alice");
-    await credentialForAlice.sendOffer(connectionToAlice);
-    await credentialForAlice.updateState();
-
-    logger.info("#14 Poll agency and wait for alice to send a credential request");
-    let credential_state = await credentialForAlice.getState();
-    while (credential_state !== StateType.RequestReceived) {
-        await sleepPromise(2000);
-        await credentialForAlice.updateState();
-        credential_state = await credentialForAlice.getState();
-    }
-
-    logger.info("#17 Issue credential to alice");
-    await credentialForAlice.sendCredential(connectionToAlice);
-
-
-    logger.info("#18 Wait for alice to accept credential");
-    await credentialForAlice.updateState();
-    credential_state = await credentialForAlice.getState();
-    while (credential_state !== StateType.Accepted) {
-        await sleepPromise(2000);
-        await credentialForAlice.updateState();
-        credential_state = await credentialForAlice.getState();
-    }
-
-    const proofAttributes = [
-        {'name': 'name', 'restrictions': [{'issuer_did': agentProvision['institution_did']}]},
-        {'name': 'date', 'restrictions': [{'issuer_did': agentProvision['institution_did']}]},
-        {'name': 'degree', 'restrictions': [{'issuer_did': agentProvision['institution_did']}]}
-    ];
-
-    logger.info("#19 Create a Proof object");
-    const proof = await Proof.create({
-        sourceId: "213",
-        attrs: proofAttributes,
-        name: 'proofForAlice',
-        revocationInterval: {}
-    });
-
-    logger.info("#20 Request proof of degree from alice");
-    await proof.requestProof(connectionToAlice);
-
-    logger.info("#21 Poll agency and wait for alice to provide proof");
-    let proofState = await proof.getState();
-    while (proofState !== StateType.Accepted) {
-        await sleepPromise(2000);
-        await proof.updateState();
-        proofState = await proof.getState();
-    }
-
-    logger.info("#27 Process the proof provided by alice");
-    await proof.getProof(connectionToAlice);
-
-    logger.info("#28 Check if proof is valid");
-    if (proof.proofState === ProofState.Verified) {
-        logger.info("Proof is verified")
-    } else {
-        logger.info("Could not verify proof")
-    }
 }
 
 run();
