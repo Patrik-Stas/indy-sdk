@@ -453,7 +453,8 @@ pub trait WalletStorageType {
 enum WalletScheme {
     DatabasePerWallet,
     MultiWalletSingleTable,
-    MultiWalletMultiTable
+    MultiWalletMultiTable,
+    MultiWalletSingleTableStrategySharedPool
 }
 
 trait WalletStrategy {
@@ -476,6 +477,132 @@ pub struct PostgresStorageType {}
 struct DatabasePerWalletStrategy {}
 struct MultiWalletSingleTableStrategy {}
 struct MultiWalletMultiTableStrategy {}
+struct MultiWalletSingleTableStrategySharedPool {
+    pool: r2d2::Pool<PostgresConnectionManager>
+}
+
+
+impl WalletStrategy for MultiWalletSingleTableStrategySharedPool {
+    // initialize storage based on wallet storage strategy
+    fn init_storage(&self, config: &PostgresConfig, credentials: &PostgresCredentials) -> Result<(), WalletStorageError> {
+        // create database and tables for storage
+        // if admin user and password aren't provided then bail
+        if credentials.admin_account == None || credentials.admin_password == None {
+            return Ok(());
+        }
+
+        let url_base = PostgresStorageType::_admin_postgres_url(&config, &credentials);
+        let url = PostgresStorageType::_postgres_url(_WALLETS_DB, &config, &credentials);
+
+        let conn = postgres::Connection::connect(&url_base[..], postgres::TlsMode::None)?;
+
+        if let Err(error) = conn.execute(&_CREATE_WALLETS_DATABASE, &[]) {
+            if error.code() != Some(&postgres::error::DUPLICATE_DATABASE) {
+                conn.finish()?;
+                return Err(WalletStorageError::IOError(format!("Error occurred while creating the database: {}", error)));
+            } else {
+                // if database already exists, assume tables are created already and return
+                conn.finish()?;
+                return Ok(());
+            }
+        }
+        conn.finish()?;
+
+        let conn = match postgres::Connection::connect(&url[..], postgres::TlsMode::None) {
+            Ok(conn) => conn,
+            Err(error) => {
+                return Err(WalletStorageError::IOError(format!("Error occurred while connecting to wallet schema: {}", error)));
+            }
+        };
+
+        for sql in &_CREATE_SCHEMA_MULTI {
+            if let Err(error) = conn.execute(sql, &[]) {
+                conn.finish()?;
+                return Err(WalletStorageError::IOError(format!("Error occurred while creating wallet schema: {}", error)));
+            }
+        }
+        conn.finish()?;
+        Ok(())
+    }
+    // initialize a single wallet based on wallet storage strategy
+    fn create_wallet(&self, id: &str, config: &PostgresConfig, credentials: &PostgresCredentials, metadata: &[u8]) -> Result<(), WalletStorageError> {
+        // insert metadata
+        let url = PostgresStorageType::_postgres_url(_WALLETS_DB, &config, &credentials);
+
+        let conn = match postgres::Connection::connect(&url[..], postgres::TlsMode::None) {
+            Ok(conn) => conn,
+            Err(error) => {
+                return Err(WalletStorageError::IOError(format!("Error occurred while connecting to wallet schema: {}", error)));
+            }
+        };
+
+        // We allow error on conflict since this indicates AlreadyExists error
+        let ret = match conn.execute("INSERT INTO metadata(wallet_id, value) VALUES($1, $2)", &[&id, &metadata]) {
+            Ok(_) => Ok(()),
+            Err(error) => {
+                if error.code() == Some(&postgres::error::UNIQUE_VIOLATION) {
+                    Err(WalletStorageError::AlreadyExists)
+                } else {
+                    Err(WalletStorageError::IOError(format!("Error occurred while inserting into metadata: {}", error)))
+                }
+            }
+        };
+        conn.finish()?;
+        ret
+    }
+    // open a wallet based on wallet storage strategy
+    fn open_wallet(&self, id: &str, config: &PostgresConfig, credentials: &PostgresCredentials) -> Result<Box<PostgresStorage>, WalletStorageError> {
+        debug!("MultiWalletSingleTableStrategySharedPool open >> ");
+        let url = PostgresStorageType::_postgres_url(_WALLETS_DB, &config, &credentials);
+
+
+        debug!("MultiWalletSingleTableStrategySharedPool open <<");
+        Ok(Box::new(PostgresStorage {
+            pool: self.pool.clone(),
+            wallet_id: id.to_string(),
+        }))
+    }
+
+    // delete a single wallet based on wallet storage strategy
+    fn delete_wallet(&self, id: &str, config: &PostgresConfig, credentials: &PostgresCredentials) -> Result<(), WalletStorageError> {
+        let url = PostgresStorageType::_postgres_url(&_WALLETS_DB, &config, &credentials);
+
+        let conn = match postgres::Connection::connect(&url[..], postgres::TlsMode::None) {
+            Ok(conn) => conn,
+            Err(error) => {
+                return Err(WalletStorageError::IOError(format!("Error occurred while connecting to wallet schema: {}", error)));
+            }
+        };
+
+        let mut ret = Ok(());
+        for sql in &_DELETE_WALLET_MULTI {
+            ret = match conn.execute(sql, &[&id]) {
+                Ok(row_count) => {
+                    if row_count == 0 {
+                        Err(WalletStorageError::NotFound)
+                    } else {
+                        Ok(())
+                    }
+                }
+                Err(error) => {
+                    Err(WalletStorageError::IOError(format!("Error occurred while deleting wallet: {}", error)))
+                }
+            }
+        };
+        conn.finish()?;
+        return ret;
+    }
+    // determine phyisical table name based on wallet strategy
+    fn table_name(&self, _id: &str, base_name: &str) -> String {
+        // TODO
+        base_name.to_owned()
+    }
+    // determine additional query parameters based on wallet strategy
+    fn query_qualifier(&self) -> Option<String> {
+        // TODO
+        Some("AND wallet_id = $$".to_owned())
+    }
+}
 
 impl WalletStrategy for DatabasePerWalletStrategy {
     // initialize storage based on wallet storage strategy
@@ -1628,7 +1755,29 @@ impl WalletStorageType for PostgresStorageType {
                 Some(scheme) => match scheme {
                     WalletScheme::DatabasePerWallet => SELECTED_STRATEGY = &DatabasePerWalletStrategy{},
                     WalletScheme::MultiWalletSingleTable => SELECTED_STRATEGY = &MultiWalletSingleTableStrategy{},
-                    WalletScheme::MultiWalletMultiTable => SELECTED_STRATEGY = &MultiWalletMultiTableStrategy{}
+                    WalletScheme::MultiWalletMultiTable => SELECTED_STRATEGY = &MultiWalletMultiTableStrategy{},
+                    WalletScheme::MultiWalletSingleTableStrategySharedPool => {
+                        let url_base = PostgresStorageType::_admin_postgres_url(&config, &credentials);
+                        let url = PostgresStorageType::_postgres_url(_WALLETS_DB, &config, &credentials);
+
+                        debug!("MultiWalletSingleTableStrategySharedPool open >> building PostgresConnectionManager");
+                        let manager = match PostgresConnectionManager::new(&url[..], config.r2d2_tls()) {
+                            Ok(manager) => manager,
+                            Err(_) => return Err(WalletStorageError::NotFound)
+                        };
+
+                        debug!("MultiWalletSingleTableStrategySharedPool open >> building connection pool");
+                        let pool = match r2d2::Pool::builder()
+                            .min_idle(Some(config.min_idle_count()))
+                            .max_size(config.max_connections())
+                            .idle_timeout(Some(Duration::new(config.connection_timeout(), 0)))
+                            .build(manager) {
+                            Ok(pool) => pool,
+                            Err(_) => return Err(WalletStorageError::NotFound)
+                        };
+                        let strategy = MultiWalletSingleTableStrategySharedPool {pool};
+                        SELECTED_STRATEGY = &strategy;
+                    }
                 },
                 None => ()
             };
