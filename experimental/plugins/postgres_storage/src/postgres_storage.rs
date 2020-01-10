@@ -20,6 +20,8 @@ use wql::query;
 use wql::transaction;
 
 use wql::storage::{StorageIterator, WalletStorage, StorageRecord, EncryptedValue, Tag, TagName};
+use self::r2d2_postgres::r2d2::Pool;
+use errors::wallet::WalletStorageError::UninitializedStorageError;
 
 fn default_true() -> bool { true }
 
@@ -473,7 +475,7 @@ trait WalletStrategy {
     fn open_wallet(&self, id: &str, config: &PostgresConfig, credentials: &PostgresCredentials) -> Result<Box<PostgresStorage>, WalletStorageError>;
     // delete a single wallet based on wallet storage strategy
     fn delete_wallet(&self, id: &str, config: &PostgresConfig, credentials: &PostgresCredentials) -> Result<(), WalletStorageError>;
-    // determine phyisical table name based on wallet strategy
+    // determine physical table name based on wallet strategy
     fn table_name(&self, id: &str, base_name: &str) -> String;
     // determine additional query parameters based on wallet strategy
     fn query_qualifier(&self) -> Option<String>;
@@ -562,7 +564,7 @@ impl WalletStrategy for MultiWalletSingleTableStrategySharedPool {
     }
     // open a wallet based on wallet storage strategy
     fn open_wallet(&self, id: &str, config: &PostgresConfig, credentials: &PostgresCredentials) -> Result<Box<PostgresStorage>, WalletStorageError> {
-        debug!("MultiWalletSingleTableStrategySharedPool open >> ");
+        debug!("    MultiWalletSingleTableStrategySharedPool open >> ");
         let _url = PostgresStorageType::_postgres_url(_WALLETS_DB, &config, &credentials);
 
         debug!("MultiWalletSingleTableStrategySharedPool open <<");
@@ -1024,20 +1026,7 @@ impl WalletStorage for PostgresStorage {
         };
         let pool = self.pool.clone();
         let conn = pool.get().unwrap();
-
-//        let query_qualifier = unsafe {
-//            SELECTED_STRATEGY.query_qualifier()
-//        };
-        let query_qualifier = {
-            let r1 = SELECTED_STRATEGY.read().unwrap();
-            match r1.as_ref() {
-                Some(strategy) => {
-                    println!("Found some strategy!");
-                    strategy.query_qualifier()
-                }
-                None => panic!("Should never happen")
-            }
-        };
+        let query_qualifier = get_wallet_strategy_qualifier()?;
         let res: Result<(i64, Vec<u8>, Vec<u8>), WalletStorageError> = {
             let mut rows = match query_qualifier {
                 Some(_) => conn.query(
@@ -1140,16 +1129,7 @@ impl WalletStorage for PostgresStorage {
     fn add(&self, type_: &[u8], id: &[u8], value: &EncryptedValue, tags: &[Tag]) -> Result<(), WalletStorageError> {
         let pool = self.pool.clone();
         let conn = pool.get().unwrap();
-        let query_qualifier = {
-            let r1 = SELECTED_STRATEGY.read().unwrap();
-            match r1.as_ref() {
-                Some(strategy) => {
-                    println!("Found some strategy!");
-                    strategy.query_qualifier()
-                }
-                None => panic!("Should never happen")
-            }
-        };
+        let query_qualifier = get_wallet_strategy_qualifier()?;
         let tx: transaction::Transaction = transaction::Transaction::new(&conn)?;
         let res = match query_qualifier {
             Some(_) => tx.prepare_cached("INSERT INTO items (type, name, value, key, wallet_id) VALUES ($1, $2, $3, $4, $5) RETURNING id")?
@@ -1241,16 +1221,7 @@ impl WalletStorage for PostgresStorage {
     fn update(&self, type_: &[u8], id: &[u8], value: &EncryptedValue) -> Result<(), WalletStorageError> {
         let pool = self.pool.clone();
         let conn = pool.get().unwrap();
-        let query_qualifier = {
-            let r1 = SELECTED_STRATEGY.read().unwrap();
-            match r1.as_ref() {
-                Some(strategy) => {
-                    println!("Found some strategy!");
-                    strategy.query_qualifier()
-                }
-                None => panic!("Should never happen")
-            }
-        };
+        let query_qualifier = get_wallet_strategy_qualifier()?;
         let res = match query_qualifier {
             Some(_) => conn.prepare_cached("UPDATE items SET value = $1, key = $2 WHERE type = $3 AND name = $4 AND wallet_id = $5")?
                 .execute(&[&value.data, &value.key, &type_.to_vec(), &id.to_vec(), &self.wallet_id]),
@@ -1269,16 +1240,7 @@ impl WalletStorage for PostgresStorage {
     fn add_tags(&self, type_: &[u8], id: &[u8], tags: &[Tag]) -> Result<(), WalletStorageError> {
         let pool = self.pool.clone();
         let conn = pool.get().unwrap();
-        let query_qualifier = {
-            let r1 = SELECTED_STRATEGY.read().unwrap();
-            match r1.as_ref() {
-                Some(strategy) => {
-                    println!("Found some strategy!");
-                    strategy.query_qualifier()
-                }
-                None => panic!("Should never happen")
-            }
-        };
+        let query_qualifier = get_wallet_strategy_qualifier()?;
         let tx: transaction::Transaction = transaction::Transaction::new(&conn)?;
 
         let res = match query_qualifier {
@@ -1367,16 +1329,7 @@ impl WalletStorage for PostgresStorage {
     fn update_tags(&self, type_: &[u8], id: &[u8], tags: &[Tag]) -> Result<(), WalletStorageError> {
         let pool = self.pool.clone();
         let conn = pool.get().unwrap();
-        let query_qualifier = {
-            let r1 = SELECTED_STRATEGY.read().unwrap();
-            match r1.as_ref() {
-                Some(strategy) => {
-                    println!("Found some strategy!");
-                    strategy.query_qualifier()
-                }
-                None => panic!("Should never happen")
-            }
-        };
+        let query_qualifier = get_wallet_strategy_qualifier()?;
         let tx: transaction::Transaction = transaction::Transaction::new(&conn)?;
 
         let res = match query_qualifier {
@@ -1450,16 +1403,7 @@ impl WalletStorage for PostgresStorage {
     fn delete_tags(&self, type_: &[u8], id: &[u8], tag_names: &[TagName]) -> Result<(), WalletStorageError> {
         let pool = self.pool.clone();
         let conn = pool.get().unwrap();
-        let query_qualifier = {
-            let r1 = SELECTED_STRATEGY.read().unwrap();
-            match r1.as_ref() {
-                Some(strategy) => {
-                    println!("Found some strategy!");
-                    strategy.query_qualifier()
-                }
-                None => panic!("Should never happen")
-            }
-        };
+        let query_qualifier = get_wallet_strategy_qualifier()?;
         let res = match query_qualifier {
             Some(_) => {
                 let mut rows = conn.prepare_cached("SELECT id FROM items WHERE type =$1 AND name = $2 AND wallet_id = $3")?
@@ -1545,16 +1489,7 @@ impl WalletStorage for PostgresStorage {
     fn delete(&self, type_: &[u8], id: &[u8]) -> Result<(), WalletStorageError> {
         let pool = self.pool.clone();
         let conn = pool.get().unwrap();
-        let query_qualifier = {
-            let r1 = SELECTED_STRATEGY.read().unwrap();
-            match r1.as_ref() {
-                Some(strategy) => {
-                    println!("Found some strategy!");
-                    strategy.query_qualifier()
-                }
-                None => panic!("Should never happen")
-            }
-        };
+        let query_qualifier = get_wallet_strategy_qualifier()?;
         let row_count = match query_qualifier {
             Some(_) => conn.execute(
                 "DELETE FROM items where type = $1 AND name = $2 AND wallet_id = $3",
@@ -1575,16 +1510,7 @@ impl WalletStorage for PostgresStorage {
     fn get_storage_metadata(&self) -> Result<Vec<u8>, WalletStorageError> {
         let pool = self.pool.clone();
         let conn = pool.get().unwrap();
-        let query_qualifier = {
-            let r1 = SELECTED_STRATEGY.read().unwrap();
-            match r1.as_ref() {
-                Some(strategy) => {
-                    println!("Found some strategy!");
-                    strategy.query_qualifier()
-                }
-                None => panic!("Should never happen")
-            }
-        };
+        let query_qualifier = get_wallet_strategy_qualifier()?;
         let res: Result<Vec<u8>, WalletStorageError> = {
             let mut rows = match query_qualifier {
                 Some(_) => conn.query(
@@ -1610,16 +1536,7 @@ impl WalletStorage for PostgresStorage {
     fn set_storage_metadata(&self, metadata: &[u8]) -> Result<(), WalletStorageError> {
         let pool = self.pool.clone();
         let conn = pool.get().unwrap();
-        let query_qualifier = {
-            let r1 = SELECTED_STRATEGY.read().unwrap();
-            match r1.as_ref() {
-                Some(strategy) => {
-                    println!("Found some strategy!");
-                    strategy.query_qualifier()
-                }
-                None => panic!("Should never happen")
-            }
-        };
+        let query_qualifier = get_wallet_strategy_qualifier()?;
         let res = match query_qualifier {
             Some(_) => conn.execute("UPDATE metadata SET value = $1 WHERE wallet_id = $2", &[&metadata.to_vec(), &self.wallet_id]),
             None => conn.execute("UPDATE metadata SET value = $1", &[&metadata.to_vec()])
@@ -1633,16 +1550,7 @@ impl WalletStorage for PostgresStorage {
     }
 
     fn get_all(&self) -> Result<Box<dyn StorageIterator>, WalletStorageError> {
-        let query_qualifier = {
-            let r1 = SELECTED_STRATEGY.read().unwrap();
-            match r1.as_ref() {
-                Some(strategy) => {
-                    println!("Found some strategy!");
-                    strategy.query_qualifier()
-                }
-                None => panic!("Should never happen")
-            }
-        };
+        let query_qualifier = get_wallet_strategy_qualifier()?;
         let statement = match query_qualifier {
             Some(_) => self._prepare_statement("SELECT id, name, value, key, type FROM items WHERE wallet_id = $1")?,
             None => self._prepare_statement("SELECT id, name, value, key, type FROM items")?
@@ -1675,16 +1583,7 @@ impl WalletStorage for PostgresStorage {
 
         let pool = self.pool.clone();
         let conn = pool.get().unwrap();
-        let query_qualifier = {
-            let r1 = SELECTED_STRATEGY.read().unwrap();
-            match r1.as_ref() {
-                Some(strategy) => {
-                    println!("Found some strategy!");
-                    strategy.query_qualifier()
-                }
-                None => panic!("Should never happen")
-            }
-        };
+        let query_qualifier = get_wallet_strategy_qualifier()?;
         let wallet_id_arg = self.wallet_id.to_owned();
         let total_count: Option<usize> = if search_options.retrieve_total_count {
             let (query_string, query_arguments) = match query_qualifier {
@@ -1797,6 +1696,38 @@ impl PostgresStorage {
     }
 }
 
+fn create_connection_pool(config: &PostgresConfig, credentials: &PostgresCredentials) -> Result<Pool<PostgresConnectionManager>, WalletStorageError> {
+    let _url_base = PostgresStorageType::_admin_postgres_url(&config, &credentials);
+    let url = PostgresStorageType::_postgres_url(_WALLETS_DB, &config, &credentials);
+
+
+    let manager = match PostgresConnectionManager::new(&url[..], config.r2d2_tls()) {
+        Ok(manager) => manager,
+        Err(e) => {return Err(WalletStorageError::GenericError(format!("Problem creating PostgresConnectionManager. Details {:?}", e)))}
+    };
+
+    debug!("MultiWalletSingleTableStrategySharedPool open >> building connection pool");
+    match r2d2::Pool::builder()
+        .min_idle(Some(config.min_idle_count()))
+        .max_size(config.max_connections())
+        .idle_timeout(Some(Duration::new(config.connection_timeout(), 0)))
+        .build(manager) {
+        Ok(pool) => Ok(pool),
+        Err(e) => Err(WalletStorageError::GenericError(format!("Problem creating PostgresConnectionManager. Details {:?}", e)))
+    }
+}
+
+fn set_wallet_strategy(strategy: Box<dyn WalletStrategy + Send + Sync>) {
+    let mut write_strategy = SELECTED_STRATEGY.write().unwrap();
+    *write_strategy = Some(strategy);
+}
+
+fn get_wallet_strategy_qualifier() -> Result<Option<String>, WalletStorageError> {
+    let read_strategy = SELECTED_STRATEGY.read().unwrap();
+    read_strategy.as_ref()
+        .map_or(Err(UninitializedStorageError), |strategy| Ok(strategy.query_qualifier()))
+}
+
 
 impl WalletStorageType for PostgresStorageType {
     ///
@@ -1852,41 +1783,21 @@ impl WalletStorageType for PostgresStorageType {
         match config.wallet_scheme {
             Some(scheme) => match scheme {
                 WalletScheme::DatabasePerWallet => {
-                    let mut w = SELECTED_STRATEGY.write().unwrap();
-                    *w = Some(Box::new(DatabasePerWalletStrategy {}));
+                    debug!("Initialising postgresql using DatabasePerWallet strategy.");
+                    set_wallet_strategy(Box::new(DatabasePerWalletStrategy {}));
                 }
                 WalletScheme::MultiWalletSingleTable => {
-                    let mut w = SELECTED_STRATEGY.write().unwrap();
-                    *w = Some(Box::new(MultiWalletSingleTableStrategy {}));
+                    debug!("Initialising postgresql using MultiWalletSingleTable strategy.");
+                    set_wallet_strategy(Box::new(MultiWalletSingleTableStrategy {}));
                 }
                 WalletScheme::MultiWalletMultiTable => {
-                    let mut w = SELECTED_STRATEGY.write().unwrap();
-                    *w = Some(Box::new(MultiWalletMultiTableStrategy {}));
+                    debug!("Initialising postgresql using MultiWalletMultiTable strategy.");
+                    set_wallet_strategy(Box::new(MultiWalletMultiTableStrategy {}));
                 }
                 WalletScheme::MultiWalletSingleTableSharedPool => {
-                    let pool = {
-                        let _url_base = PostgresStorageType::_admin_postgres_url(&config, &credentials);
-                        let url = PostgresStorageType::_postgres_url(_WALLETS_DB, &config, &credentials);
-
-                        debug!("MultiWalletSingleTableStrategySharedPool open >> building PostgresConnectionManager");
-                        let manager = match PostgresConnectionManager::new(&url[..], config.r2d2_tls()) {
-                            Ok(manager) => manager,
-                            Err(_) => return Err(WalletStorageError::NotFound)
-                        };
-
-                        debug!("MultiWalletSingleTableStrategySharedPool open >> building connection pool");
-                        let pool = match r2d2::Pool::builder()
-                            .min_idle(Some(config.min_idle_count()))
-                            .max_size(config.max_connections())
-                            .idle_timeout(Some(Duration::new(config.connection_timeout(), 0)))
-                            .build(manager) {
-                            Ok(pool) => pool,
-                            Err(_) => return Err(WalletStorageError::NotFound)
-                        };
-                        pool
-                    };
-                    let mut w = SELECTED_STRATEGY.write().unwrap();
-                    *w = Some(Box::new(MultiWalletSingleTableStrategySharedPool { pool }));
+                    debug!("Initialising postgresql using MultiWalletSingleTableSharedPool strategy.");
+                    let pool = create_connection_pool(&config, &credentials)?;
+                    set_wallet_strategy(Box::new(MultiWalletSingleTableStrategySharedPool { pool }));
                 }
             },
             None => ()
@@ -1894,10 +1805,9 @@ impl WalletStorageType for PostgresStorageType {
         let r1 = SELECTED_STRATEGY.read().unwrap();
         match r1.as_ref() {
             Some(strategy) => {
-                println!("Found some strategy!");
                 strategy.init_storage(&config, &credentials)
             }
-            None => panic!("Should never happen")
+            None => panic!("Was about to initialize postgresql storage strategy, but not strategy was yet set. You should never see this error.")
         }
     }
 
@@ -1944,14 +1854,11 @@ impl WalletStorageType for PostgresStorageType {
             None => return Err(WalletStorageError::ConfigError)
         };
 
-        let r1 = SELECTED_STRATEGY.read().unwrap();
-        match r1.as_ref() {
-            Some(strategy) => {
-                println!("Found some strategy!");
-                strategy.delete_wallet(id, &config, &credentials)
-            }
-            None => panic!("Should never happen")
-        }
+        let strategy_read_lock = SELECTED_STRATEGY.read().unwrap();
+        strategy_read_lock
+            .as_ref()
+            .expect("Should never happen")
+            .delete_wallet(id, &config, &credentials)
     }
 
     ///
