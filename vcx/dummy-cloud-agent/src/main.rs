@@ -28,6 +28,8 @@ extern crate regex;
 extern crate lazy_static;
 extern crate libc;
 extern crate libloading;
+extern crate chrono;
+extern crate rust_base58;
 
 use actix::prelude::*;
 use actors::forward_agent::ForwardAgent;

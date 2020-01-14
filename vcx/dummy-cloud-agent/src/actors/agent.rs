@@ -16,6 +16,9 @@ use utils::rand;
 use serde_json;
 use actors::admin::Admin;
 use domain::admin_message::{ResAdminQuery, ResQueryAgent};
+use rand::Rng;
+use std::time::{Duration, Instant};
+use rust_base58::ToBase58;
 
 #[allow(unused)] //FIXME:
 pub struct Agent {
@@ -30,6 +33,8 @@ pub struct Agent {
     configs: HashMap<String, String>,
 }
 
+
+
 impl Agent {
     pub fn create(owner_did: &str,
                   owner_verkey: &str,
@@ -40,8 +45,14 @@ impl Agent {
         debug!("Agent::create >> {:?}, {:?}, {:?}, {:?}",
                owner_did, owner_verkey, forward_agent_detail, wallet_storage_config);
 
+//        let wallet_id = format!("dummy_{}_{}", owner_did, rand::rand_string(10));
+//        let wallet_key = rand::rand_string(10).as_bytes().to_base58().to_string();
+
         let wallet_id = format!("dummy_{}_{}", owner_did, rand::rand_string(10));
-        let wallet_key = rand::rand_string(10);
+        let wallet_key = "8nxtSiXFvBd593Y2DCed2dYvRY1PGK9WMtxCBjLzKgbw".to_string();
+        let wallet_rekey = "8nxtSiXFvBd593Y2DCed2dYvRY1PGK9WMtxCBjLzKgbw".to_string();
+
+        println!("Generated wallet_id {} and  wallet_key = {}", wallet_id, wallet_key);
 
         let wallet_config = json!({
                     "id": wallet_id.clone(),
@@ -51,7 +62,10 @@ impl Agent {
 
         let wallet_credentials = json!({
                     "key": wallet_key.clone(),
+                    "rekey": wallet_rekey.clone(),
                     "storage_credentials": wallet_storage_config.credentials,
+                    "key_derivation_method": "RAW",
+                    "rekey_derivation_method": "RAW"
                 }).to_string();
 
         let owner_did = owner_did.to_string();
@@ -114,6 +128,10 @@ impl Agent {
         debug!("Agent::restore >> {:?}, {:?}, {:?}, {:?}, {:?}, {:?}",
                wallet_id, did, owner_did, owner_verkey, forward_agent_detail, wallet_storage_config);
 
+        let wallet_key = "8nxtSiXFvBd593Y2DCed2dYvRY1PGK9WMtxCBjLzKgbw".to_string();
+        let wallet_rekey = "8nxtSiXFvBd593Y2DCed2dYvRY1PGK9WMtxCBjLzKgbw".to_string();
+
+
         let wallet_config = json!({
                     "id": wallet_id.clone(),
                     "storage_type": wallet_storage_config.xtype,
@@ -122,50 +140,81 @@ impl Agent {
 
         let wallet_credentials = json!({
                     "key": wallet_key.clone(),
+                    "rekey": wallet_rekey.clone(),
                     "storage_credentials": wallet_storage_config.credentials,
+                    "key_derivation_method": "RAW",
+                    "rekey_derivation_method": "RAW"
                 }).to_string();
 
         let did = did.to_string();
         let owner_did = owner_did.to_string();
         let owner_verkey = owner_verkey.to_string();
 
+        let did_clone = did.clone();
+        let did_clone2 = did.clone();
+        let did_clone3 = did.clone();
+        let did_clone4 = did.clone();
+        debug!("Going to restore agent {}", &did_clone);
+        let start_restore_agent = Instant::now();
         future::ok(())
             .and_then(move |_| {
                 debug!("Opening agent wallet {:?}", &wallet_config);
+                let start_open_wallet = Instant::now();
                 wallet::open_wallet(wallet_config.as_ref(), wallet_credentials.as_ref())
                     .map_err(move |err| err.context(format!("Can't open Agent wallet using config {:?}.", wallet_config.clone())).into())
+                    .map(move |wallet_handle| {
+                        println!("start_key_for_local_did duration {:?} ms", start_open_wallet.elapsed().as_millis());
+                        wallet_handle
+                    })
             })
             .and_then(move |wallet_handle| {
+                debug!("searching key for local did {:?}", &did_clone2);
+                let start_key_for_local_did = Instant::now();
                 did::key_for_local_did(wallet_handle, &did)
-                    .map(move |verkey| (wallet_handle, did, verkey))
+                    .map(move |verkey| {
+                        println!("start_key_for_local_did duration {:?} ms", start_key_for_local_did.elapsed().as_millis());
+                        (wallet_handle, did, verkey)
+                    })
                     .map_err(|err| err.context("Can't get Agent did verkey.").into())
             })
             .and_then(move |(wallet_handle, did, verkey)| {
+                debug!("getting metadata for did {:?}", &did_clone3);
+                let start_get_did_metadata = Instant::now();
                 did::get_did_metadata(wallet_handle, &did)
                     .then(|res| match res {
                         Err(IndyError { error_code: ErrorCode::WalletItemNotFound, .. }) => Ok("{}".to_string()),
                         r => r
                     })
-                    .map(move |metadata| (wallet_handle, did, verkey, metadata))
+                    .map(move |metadata| {
+                        println!("start_key_for_local_did duration {:?} ms", start_get_did_metadata.elapsed().as_millis());
+                        (wallet_handle, did, verkey, metadata)
+                    })
                     .map_err(|err| err.context("Can't get Agent DID Metadata.").into())
             })
             .and_then(move |(wallet_handle, did, verkey, metadata)| {
                 // Resolve information about existing connections from the wallet
                 // and start Agent Connection actor for each exists connection
 
-                debug!("Agent restore. Agent configs to be loaded: {:?}", metadata);
+                debug!("Agent restore {:?}. Agent configs to be loaded: {:?}", did_clone4, metadata);
                 let configs: HashMap<String, String> = serde_json::from_str(&metadata).expect("Can't restore Agent config.");
+                let start_restore_connections = Instant::now();
+                let response = Agent::_restore_connections(wallet_handle,
+                                                           &owner_did,
+                                                           &owner_verkey,
+                                                           &forward_agent_detail,
+                                                           router.clone(),
+                                                           admin.clone(),
+                                                           configs.clone())
+                    .map(move |_| {
+                        println!("Restoring agent connections: {} miliseconds ", start_restore_connections.elapsed().as_millis());
+                        (wallet_handle, did, verkey, owner_did, owner_verkey, forward_agent_detail, router, admin, configs)
+                    });
 
-                Agent::_restore_connections(wallet_handle,
-                                            &owner_did,
-                                            &owner_verkey,
-                                            &forward_agent_detail,
-                                            router.clone(),
-                                            admin.clone(),
-                                            configs.clone())
-                    .map(move |_| (wallet_handle, did, verkey, owner_did, owner_verkey, forward_agent_detail, router, admin, configs))
+                response
             })
             .and_then(move |(wallet_handle, did, verkey, owner_did, owner_verkey, forward_agent_detail, router, admin, configs)| {
+                let start_agent_start = Instant::now();
+
                 let agent = Agent {
                     wallet_handle,
                     verkey: verkey.clone(),
@@ -182,14 +231,22 @@ impl Agent {
 
                 router
                     .send(AddA2ARoute(did.clone(), verkey.clone(), agent.clone().recipient()))
-                    .map(move |_| (admin, agent, did))
+                    .map(move |_| {
+                        println!("Starting agent took: {}ms ", start_agent_start.elapsed().as_millis());
+                        (admin, agent, did)
+                    })
                     .from_err()
                     .map_err(|err: Error| err.context("Can't add route for Agent.").into())
             })
             .and_then(move |(admin, agent, agent_did)| {
+                let start_agent_admin_register = Instant::now();
                 admin.send(AdminRegisterAgent(agent_did.clone(), agent.clone().recipient()))
                     .from_err()
-                    .map(|_| ())
+                    .map(move |_| {
+                        println!("Registering agent in admin took: {}ms ", start_agent_admin_register.elapsed().as_millis());
+                        println!("Restored agent {} in {} miliseconds ", &did_clone, start_restore_agent.elapsed().as_millis());
+                        ()
+                    })
                     .map_err(|err: Error| err.context("Can't register Agent in Admin").into())
             })
             .into_box()
