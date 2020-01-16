@@ -41,6 +41,7 @@ use std::fs::File;
 use actors::admin::Admin;
 use app::start_app_server;
 use indy::wallet_plugin::{load_storage_library, serialize_storage_plugin_configuration, finish_loading_postgres};
+use std::time::Instant;
 
 #[macro_use]
 pub(crate) mod utils;
@@ -139,13 +140,15 @@ fn _start(config_path: &str) {
         info!("Starting Forward Agent with config: {:?}", forward_agent_config);
 
         ProtocolType::set(protocol_type_config);
-
+        let start_app_instant = Instant::now();
         let admin = Admin::create();
         ForwardAgent::create_or_restore(forward_agent_config, wallet_storage_config, admin.clone())
             .map(move |forward_agent| {
                 start_app_server(server_config, app_config, forward_agent, admin)
             })
-            .map(|_| ()) // TODO: Expose server addr for graceful shutdown support
+            .map(move |_| {
+                info!("App took {:?} sec to start", start_app_instant.elapsed().as_secs());
+            }) // TODO: Expose server addr for graceful shutdown support
             .map_err(|err| panic!("Can't start Indy Dummy Agent: {}!", err))
     });
 

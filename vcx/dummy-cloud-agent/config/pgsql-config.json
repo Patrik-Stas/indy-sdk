@@ -14,15 +14,14 @@
     "addresses": [
       "127.0.0.1:8080"
     ],
-    "workers": 1
+    "workers": 4
   },
   "wallet_storage": {
     "config": {
       "url": "localhost:5432",
-      "max_connections" : 100,
-      "min_idle_time" : 1,
-      "connection_timeout" : 5,
-      "wallet_scheme": "MultiWalletSingleTable"
+      "max_connections" : 90,
+      "connection_timeout" : 30,
+      "wallet_scheme": "MultiWalletSingleTableSharedPool"
     },
     "credentials": {
       "account": "postgres",
@@ -30,12 +29,10 @@
       "admin_account": "postgres",
       "admin_password": "mysecretpassword"
     },
-    "type": "postgres_storage",
-    "plugin_init_function": null,
-    "plugin_library_path": null
+    "type": "postgres_storage"
   },
   "indy_runtime": {
-    "crypto_thread_pool_size": 4
+    "crypto_thread_pool_size": 8
   },
   "protocol_type": "1.0"
 }
