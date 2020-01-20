@@ -45,12 +45,8 @@ impl Agent {
         debug!("Agent::create >> {:?}, {:?}, {:?}, {:?}",
                owner_did, owner_verkey, forward_agent_detail, wallet_storage_config);
 
-//        let wallet_id = format!("dummy_{}_{}", owner_did, rand::rand_string(10));
-//        let wallet_key = rand::rand_string(10).as_bytes().to_base58().to_string();
-
-        let wallet_id = format!("dummy_{}_{}", owner_did, rand::rand_string(10));
+        let wallet_id = format!("dummy_{}_{}", owner_did, rand::rand_string(30));
         let wallet_key = "8nxtSiXFvBd593Y2DCed2dYvRY1PGK9WMtxCBjLzKgbw".to_string();
-        let wallet_rekey = "8nxtSiXFvBd593Y2DCed2dYvRY1PGK9WMtxCBjLzKgbw".to_string();
 
         println!("Generated wallet_id {} and  wallet_key = {}", wallet_id, wallet_key);
 
@@ -62,11 +58,10 @@ impl Agent {
 
         let wallet_credentials = json!({
                     "key": wallet_key.clone(),
-                    "rekey": wallet_rekey.clone(),
                     "storage_credentials": wallet_storage_config.credentials,
                     "key_derivation_method": "RAW",
-                    "rekey_derivation_method": "RAW"
                 }).to_string();
+
 
         let owner_did = owner_did.to_string();
         let owner_verkey = owner_verkey.to_string();
@@ -128,10 +123,6 @@ impl Agent {
         debug!("Agent::restore >> {:?}, {:?}, {:?}, {:?}, {:?}, {:?}",
                wallet_id, did, owner_did, owner_verkey, forward_agent_detail, wallet_storage_config);
 
-        let wallet_key = "8nxtSiXFvBd593Y2DCed2dYvRY1PGK9WMtxCBjLzKgbw".to_string();
-        let wallet_rekey = "8nxtSiXFvBd593Y2DCed2dYvRY1PGK9WMtxCBjLzKgbw".to_string();
-
-
         let wallet_config = json!({
                     "id": wallet_id.clone(),
                     "storage_type": wallet_storage_config.xtype,
@@ -140,10 +131,8 @@ impl Agent {
 
         let wallet_credentials = json!({
                     "key": wallet_key.clone(),
-                    "rekey": wallet_rekey.clone(),
                     "storage_credentials": wallet_storage_config.credentials,
                     "key_derivation_method": "RAW",
-                    "rekey_derivation_method": "RAW"
                 }).to_string();
 
         let did = did.to_string();
