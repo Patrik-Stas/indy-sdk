@@ -11,6 +11,7 @@ pub mod forward_agent_connection;
 pub mod agent;
 pub mod agent_connection;
 pub mod requester;
+pub mod factory;
 
 pub struct AdminRegisterRouter(pub Recipient<HandleAdminMessage>);
 

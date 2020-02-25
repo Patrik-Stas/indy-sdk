@@ -16,6 +16,7 @@ use crate::domain::config::{ForwardAgentConfig, WalletStorageConfig};
 use crate::domain::invite::ForwardAgentDetail;
 use crate::indy::{did, ErrorCode, IndyError, pairwise, pairwise::Pairwise, wallet, WalletHandle};
 use crate::utils::futures::*;
+use crate::utils::config_env::get_app_env_config;
 
 /// When the agency is initially started, single instance of forward agent is created. Forward agent
 /// is somewhat like agency representative. It has its own DID and Verkey based on configuration
@@ -35,7 +36,7 @@ pub struct ForwardAgent {
     forward_agent_detail: ForwardAgentDetail,
     /// Configuration data to access wallet storage used across Agency
     wallet_storage_config: WalletStorageConfig,
-    admin: Option<Addr<Admin>>
+    admin: Option<Addr<Admin>>,
 }
 
 impl ForwardAgent {
@@ -79,7 +80,7 @@ impl ForwardAgent {
             .and_then(move |(wallet_handle, config, wallet_storage_config)| {
                 #[cfg(test)]
                     unsafe {
-                        crate::utils::tests::FORWARD_AGENT_WALLET_HANDLE = wallet_handle;
+                    crate::utils::tests::FORWARD_AGENT_WALLET_HANDLE = wallet_handle;
                 }
 
                 // Ensure Forward Agent DID created
@@ -106,7 +107,7 @@ impl ForwardAgent {
                     .map_err(|err| err.context("Can't get Forward Agent did key").into())
             })
             .and_then(move |(wallet_handle, did, verkey, endpoint, wallet_storage_config)| {
-                Router::new(admin1)
+                Router::new(admin1, wallet_handle.clone())
                     .map(move |router| (wallet_handle, did, verkey, endpoint, wallet_storage_config, router, admin))
                     .map_err(|err| err.context("Can't create Router.").into())
             })
@@ -120,14 +121,35 @@ impl ForwardAgent {
                     endpoint: endpoint.clone(),
                 };
 
-                Self::_restore_connections(wallet_handle,
-                                           forward_agent_detail.clone(),
-                                           wallet_storage_config.clone(),
-                                           router.clone(),
-                                           admin.clone()
-                )
-                    .map(move |_| (wallet_handle, did, verkey,
-                                   router, wallet_storage_config, forward_agent_detail, admin))
+                // future::ok(())
+                //     .and_then(|_| {
+                //         if get_app_env_config().restore_on_demand == false {
+                //             Self::_restore_connections(wallet_handle,
+                //                                        forward_agent_detail.clone(),
+                //                                        wallet_storage_config.clone(),
+                //                                        router.clone(),
+                //                                        admin.clone()
+                //             )} else {
+                //             Box::new(future::ok(()))
+                //         }
+                //     })
+                //     .map(move |_| (wallet_handle, did, verkey,
+                //                    router, wallet_storage_config, forward_agent_detail, admin))
+
+                if get_app_env_config().restore_on_demand == false {
+                    info!("Forward agent begins restoration of entities.");
+                    Either::A(
+                        Self::_restore_connections(wallet_handle,
+                                                   forward_agent_detail.clone(),
+                                                   wallet_storage_config.clone(),
+                                                   router.clone(),
+                                                   admin.clone())
+                            .map(move |_| (wallet_handle, did, verkey,
+                                           router, wallet_storage_config, forward_agent_detail, admin)))
+                } else {
+                    info!(" Forward agent will be restoring individual agency entities on demand.");
+                    Either::B(Box::new(future::ok((wallet_handle, did, verkey, router, wallet_storage_config, forward_agent_detail, admin))))
+                }
             })
             .and_then(|(wallet_handle, did, verkey, router,
                            wallet_storage_config, forward_agent_detail, admin)| {

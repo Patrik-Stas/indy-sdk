@@ -250,9 +250,9 @@ impl Agent {
                 match admin {
                     Some(admin) => Either::A(
                         admin.send(AdminRegisterAgent(agent_did.clone(), agent.clone().recipient()))
-                        .from_err()
-                        .map(|_| ())
-                        .map_err(|err: Error| err.context("Can't register Agent in Admin").into())),
+                            .from_err()
+                            .map(|_| ())
+                            .map_err(|err: Error| err.context("Can't register Agent in Admin").into())),
                     None => Either::B(future::ok(()))
                 }
             })

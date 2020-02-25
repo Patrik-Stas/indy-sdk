@@ -4,6 +4,8 @@ use actix::prelude::*;
 use failure::{err_msg, Error};
 use futures::*;
 use futures::future::Either;
+use futures::*;
+use failure::{Fail};
 
 use crate::actors::{AddA2ARoute, AddA2ConnRoute, AdminRegisterRouter, HandleA2AMsg, HandleA2ConnMsg, HandleAdminMessage, RemoteMsg, RouteA2AMsg, RouteA2ConnMsg};
 use crate::actors::admin::Admin;
@@ -11,6 +13,8 @@ use crate::actors::requester::Requester;
 use crate::domain::a2connection::A2ConnMessage;
 use crate::domain::admin_message::ResAdminQuery;
 use crate::utils::futures::*;
+use crate::indy::{did, ErrorCode, IndyError, pairwise, pairwise::Pairwise, wallet, WalletHandle};
+use crate::domain::config::WalletStorageConfig;
 
 /// Router stores DID and Verkeys and handle all Forward messages. More info on Aries FWD messages:
 /// https://github.com/hyperledger/aries-rfcs/tree/master/concepts/0094-cross-domain-messaging
@@ -25,19 +29,53 @@ use crate::utils::futures::*;
 pub struct Router {
     routes: HashMap<String, Recipient<HandleA2AMsg>>,
     pairwise_routes: HashMap<String, Recipient<HandleA2ConnMsg>>,
-    requester: Addr<Requester>
+    requester: Addr<Requester>,
+    fw_agent_wallet_handle: WalletHandle
 }
 
 impl Router {
-    pub fn new(admin: Option<Addr<Admin>>) -> ResponseFuture<Addr<Router>, Error> {
+    // pub fn new(admin: Option<Addr<Admin>>,
+    //            wallet_storage_config: WalletStorageConfig) -> ResponseFuture<Addr<Router>, Error> {
+
+    pub fn new(admin: Option<Addr<Admin>>,
+               fw_agent_wallet_handle: WalletHandle) -> ResponseFuture<Addr<Router>, Error> {
         trace!("Router::new >>");
         future::ok(())
+            // .and_then(move |_| {
+            //
+            //     let wallet_config = json!({
+            //         "id": config.wallet_id,
+            //         "storage_type": wallet_storage_config.xtype,
+            //         "storage_config": wallet_storage_config.config,
+            //      }).to_string();
+            //
+            //     let wallet_credentials = json!({
+            //         "key": config.wallet_passphrase,
+            //         "storage_credentials": wallet_storage_config.credentials,
+            //     }).to_string();
+            //
+            //     wallet::create_wallet(&wallet_config, &wallet_credentials)
+            //         .then(|res| match res {
+            //             Err(IndyError { error_code: ErrorCode::WalletAlreadyExistsError, .. }) => Ok(()),
+            //             r => r
+            //         })
+            //         .map(|_| (config, wallet_storage_config, wallet_config, wallet_credentials))
+            //         .map_err(|err| err.context("Can't ensure Forward Agent wallet created.").into())
+            // })
+            // .and_then(|(config, wallet_storage_config, wallet_config, wallet_credentials)| {
+            //     // Open Forward Agent wallet
+            //
+            //     wallet::open_wallet(&wallet_config, &wallet_credentials)
+            //         .map(|wallet_handle| (wallet_handle, config, wallet_storage_config))
+            //         .map_err(|err| err.context("Can't open Forward Agent wallet.`").into())
+            // })
             .and_then(move |_| {
                 let requester = Requester::new().start();
                 let router = Router {
                     routes: HashMap::new(),
                     pairwise_routes: HashMap::new(),
                     requester,
+                    fw_agent_wallet_handle
                 };
                 let router= router.start();
                 if let Some(admin) = admin {
@@ -65,6 +103,10 @@ impl Router {
         self.pairwise_routes.insert(verkey, handler);
     }
 
+    fn _try_restore_route(did: &str) {
+
+    }
+
     pub fn route_a2a_msg(&self, did: String, msg: Vec<u8>) -> ResponseFuture<Vec<u8>, Error> {
         trace!("Router::route_a2a_msg >> {:?}, {:?}", did, msg);
 
@@ -75,8 +117,11 @@ impl Router {
                 .and_then(|res| res)
                 .into_box()
         } else {
-            err!(err_msg("No route found."))
+            _try_restore_route(&did)
+
         }
+
+
     }
 
     pub fn route_a2conn_msg(&self, did: String, msg: A2ConnMessage) -> ResponseFuture<A2ConnMessage, Error> {
