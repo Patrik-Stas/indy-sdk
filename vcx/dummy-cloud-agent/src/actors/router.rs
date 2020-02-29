@@ -91,6 +91,19 @@ impl Router {
             .into_box()
     }
 
+
+    fn register_fwac(&mut self, owner_did: String, entity_did: String, entity_verkey: String) {
+        trace!("Router::register_fwac >> {}, {}", did, verkey);
+        future::ok(())
+            .and_then(move |_| {
+                pairwise::create_pairwise(self.wallet_handle, &user_pairwise_did, &agent_connection_did, Some("{}"))
+                    .map_err(|err| err.context("Can't store agent pairwise connection.").into())
+                    .map(|_| (user_pairwise_did, agent_connection_did, agent_connection_verkey))
+                    .into_actor(slf)
+            })
+            .into_box()
+    }
+
     fn add_a2a_route(&mut self, did: String, verkey: String, handler: Recipient<HandleA2AMsg>) {
         trace!("Router::handle_add_route >> {}, {}", did, verkey);
         self.routes.insert(did, handler.clone());
@@ -103,7 +116,7 @@ impl Router {
         self.pairwise_routes.insert(verkey, handler);
     }
 
-    fn _try_restore_route(did: &str) {
+    fn _try_restore_route(&mut self, did: &str) -> Recipient<HandleA2AMsg> {
 
     }
 
