@@ -15,7 +15,7 @@ pub struct AppEnvConfig {
     pub new_agent_kdf: KeyDerivationFunction,
     #[envconfig(from = "RESTORE_ON_DEMAND", default = "false")]
     pub restore_on_demand: bool,
-    #[envconfig(from = "RESTORE_ON_DEMAND", default = "http://localhost:3001/api/notifications")]
+    #[envconfig(from = "WEBHOOK_URL", default = "http://localhost:3001/api/notifications")]
     pub webhook_notifications: String,
 }
 
