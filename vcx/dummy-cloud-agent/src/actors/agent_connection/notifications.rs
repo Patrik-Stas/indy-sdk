@@ -11,6 +11,7 @@ use crate::utils::futures::*;
 use crate::domain::a2a::RemoteMessageType;
 use crate::domain::internal_message::InternalMessage;
 use futures::future::Either;
+use crate::utils::config_env::get_app_env_config;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -62,19 +63,22 @@ impl AgentConnection {
                 error!("Failed attempt to load webhook_url");
             })
             .and_then(move |webhook_url| {
+                let msg_notification = MessageNotification {
+                    msg_uid: msg.uid.clone(),
+                    msg_type: msg._type.clone(),
+                    their_pw_did: msg.sender_did.clone(),
+                    msg_status_code: msg.status_code.clone(),
+                    pw_did: user_pairwise_did,
+                    notification_id: Uuid::new_v4().to_string(),
+                };
                 match webhook_url {
                     Some(webhook_url) => {
-                        let msg_notification = MessageNotification {
-                            msg_uid: msg.uid.clone(),
-                            msg_type: msg._type.clone(),
-                            their_pw_did: msg.sender_did.clone(),
-                            msg_status_code: msg.status_code.clone(),
-                            pw_did: user_pairwise_did,
-                            notification_id: Uuid::new_v4().to_string(),
-                        };
                         Either::A(Self::send_webhook_notification(&webhook_url, msg_notification))
                     }
-                    None => Either::B(future::ok(()))
+                    None => {
+                        Either::B(Self::send_webhook_notification(&get_app_env_config().webhook_notifications, msg_notification))
+                        // Either::B(future::ok(()))
+                    }
                 }
             })
             .into_box()
