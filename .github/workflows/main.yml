@@ -72,53 +72,82 @@ jobs:
           docker build --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH \
                        -f "docker/Dockerfile" \
                        -t ubuntu16-libindy:$REF_HASH \
-                       .
+                       ./libindy
           docker tag ubuntu16-libindy:$REF_HASH \
                      docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH
           docker push docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH || true
 
-  build-libindy-run-unittests:
-    needs: assure-image-indypool
+  run-libindy-unittests-docker:
     runs-on: ubuntu-16.04
+    needs: [assure-image-indypool, build-image-ubuntu16-libindy]
     steps:
-      - name: Check cargo version
-        run: |
-          cargo --version
-          rustc --version
+      - name: Git checkout
+        uses: actions/checkout@v2
       - name: Docker setup
         run: |
           echo ::set-env name=GITHUB_REPOSITORY_LOWERCASE::$(echo $GITHUB_REPOSITORY | awk '{print tolower($0)}')
           REF_HASH=`echo -n "$GITHUB_REF-$GITHUB_ACTOR" | shasum | cut -f1 -d" "`
           echo ::set-env name=REF_HASH::$(echo $REF_HASH)
           echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
-      - name: Run indy pool
+      - name: Pull image ubuntu16-libindy
+        run: docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH || true
+      - name: Pull image indy_pool
+        run: docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
+      - name: Building docker image
         run: |
-          echo "Run pool image cached from previous dependent 'build-pool-image' workflow"
-          docker run -d --name indylocalhost -p 9701-9708:9701-9708 -d docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH
-          sleep 2
-          docker ps -a
-      - name: Git checkout
-        uses: actions/checkout@v2
-      - name: "Install libsodium"
-        run: |
-          cd /tmp && \
-          curl https://download.libsodium.org/libsodium/releases/libsodium-1.0.18.tar.gz | tar -xz && \
-          cd /tmp/libsodium-1.0.18 && \
-          ./configure --disable-shared && \
-          sudo make && \
-          sudo make install
-      - name: Install dependencies
-        run: |
-          sudo apt-get update && sudo apt-get install -y libzmq3-dev
-      - name: Build libindy
-        run: |
-          pwd
-          cd libindy
-          cargo build
-      - name: Run libindy unit tests
-        run: |
-          cd libindy
-          RUST_TEST_THREADS=1 TEST_POOL_IP=127.0.0.1 cargo test
+          docker run -d --name indylocalhost \
+                        --network host \
+                        docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH
+
+          docker run -d --name indylocalhost \
+                        --network host \
+                        docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH \
+                        cd '$HOME'/indy-sdk/libindy && cargo test
+
+#
+#
+#  build-libindy-run-unittests:
+#    needs: assure-image-indypool
+#    runs-on: ubuntu-16.04
+#    steps:
+#      - name: Check cargo version
+#        run: |
+#          cargo --version
+#          rustc --version
+#      - name: Docker setup
+#        run: |
+#          echo ::set-env name=GITHUB_REPOSITORY_LOWERCASE::$(echo $GITHUB_REPOSITORY | awk '{print tolower($0)}')
+#          REF_HASH=`echo -n "$GITHUB_REF-$GITHUB_ACTOR" | shasum | cut -f1 -d" "`
+#          echo ::set-env name=REF_HASH::$(echo $REF_HASH)
+#          echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
+#      - name: Run indy pool
+#        run: |
+#          echo "Run pool image cached from previous dependent 'build-pool-image' workflow"
+#          docker run -d --name indylocalhost -p 9701-9708:9701-9708 -d docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH
+#          sleep 2
+#          docker ps -a
+#      - name: Git checkout
+#        uses: actions/checkout@v2
+#      - name: "Install libsodium"
+#        run: |
+#          cd /tmp && \
+#          curl https://download.libsodium.org/libsodium/releases/libsodium-1.0.18.tar.gz | tar -xz && \
+#          cd /tmp/libsodium-1.0.18 && \
+#          ./configure --disable-shared && \
+#          sudo make && \
+#          sudo make install
+#      - name: Install dependencies
+#        run: |
+#          sudo apt-get update && sudo apt-get install -y libzmq3-dev
+#      - name: Build libindy
+#        run: |
+#          pwd
+#          cd libindy
+#          cargo build
+#      - name: Run libindy unit tests
+#        run: |
+#          cd libindy
+#          RUST_TEST_THREADS=1 TEST_POOL_IP=127.0.0.1 cargo test
 
 #  run-pool-image:
 #    needs: build-pool-image
