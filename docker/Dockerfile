@@ -50,9 +50,8 @@ USER indy
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.43.1
 ENV PATH /home/indy/.cargo/bin:$PATH
 
-WORKDIR /home/indy/indy-sdk
-COPY --chown=indy:indy ./libindy ./libindy
-COPY --chown=indy:indy ./wrappers ./wrappers
+WORKDIR /home/indy/indy-sdk/libindy
+COPY --chown=indy:indy ./ ./
 
 RUN ls /home/indy/indy-sdk
 RUN ls /home/indy/indy-sdk/libindy
