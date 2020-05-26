@@ -1,5 +1,5 @@
-**/Dockerfile
-**/.dockerignore
+**/*Dockerfile
+**/*.dockerignore
 **/.gitignore
 **/.idea
 
@@ -14,3 +14,5 @@ docs/
 .github/
 .idea/
 cli/
+
+experimental/

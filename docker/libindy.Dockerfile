@@ -50,9 +50,12 @@ USER indy
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.43.1
 ENV PATH /home/indy/.cargo/bin:$PATH
 
-WORKDIR /home/indy/indy-sdk/libindy
+WORKDIR /home/indy/indy-sdk
 COPY --chown=indy:indy ./ ./
+#COPY --chown=indy:indy ./libindy ./libindy
+#COPY --chown=indy:indy ./wrappers ./wrappers
 
+# TODO :Check that libvcx directory was ignored according to correct dockerignore file
 RUN ls /home/indy/indy-sdk
 RUN ls /home/indy/indy-sdk/libindy
 RUN cargo build --release --manifest-path=/home/indy/indy-sdk/libindy/Cargo.toml

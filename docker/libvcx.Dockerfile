@@ -51,14 +51,18 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.43.1
 ENV PATH /home/indy/.cargo/bin:$PATH
 
 WORKDIR /home/indy/indy-sdk
-COPY --chown=indy:indy ./libindy ./libindy
-COPY --chown=indy:indy ./wrappers ./wrappers
+COPY --chown=indy:indy ./ ./
+
+#COPY --chown=indy:indy ./libindy ./libindy
+#COPY --chown=indy:indy ./vcx ./vcx
+#COPY --chown=indy:indy ./wrappers ./wrappers
 
 RUN ls /home/indy/indy-sdk
-RUN ls /home/indy/indy-sdk/libindy
 RUN cargo build --release --manifest-path=/home/indy/indy-sdk/libindy/Cargo.toml
+RUN cargo build --release --manifest-path=/home/indy/indy-sdk/vcx/libvcx/Cargo.toml
 USER root
 RUN mv /home/indy/indy-sdk/libindy/target/release/*.so /usr/lib
+RUN mv /home/indy/indy-sdk/vcx/libvcx/target/release/*.so /usr/lib
 
 FROM ubuntu:16.04
 
@@ -77,6 +81,7 @@ COPY --from=BASE /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu
 COPY --from=BASE /usr/local /usr/local
 
 COPY --from=BASE /usr/lib/libindy.so /usr/lib/libindy.so
+COPY --from=BASE /usr/lib/libvcx.so /usr/lib/libvcx.so
 
 USER indy
 
