@@ -71,14 +71,14 @@ jobs:
         run: |
           docker image ls
           echo "Remote image to be used as layer cache"
-          docker iamge inspect docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH
+          docker image inspect docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH
           docker build --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH \
                        -f "docker/libindy.Dockerfile" \
                        -t ubuntu16-libindy:$REF_HASH \
                        .
 
           echo "Locally built image"
-          docker iamge inspect ubuntu16-libindy:$REF_HASH
+          docker image inspect ubuntu16-libindy:$REF_HASH
           docker image ls
 
           docker tag ubuntu16-libindy:$REF_HASH \
