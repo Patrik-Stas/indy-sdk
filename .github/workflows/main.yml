@@ -9,6 +9,8 @@ on: [push, pull_request]
 jobs:
   github-actions-info:
     runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILDKIT: 1
     steps:
     - run: echo $GITHUB_REPOSITORY
     - run: echo $GITHUB_ACTOR
@@ -19,6 +21,7 @@ jobs:
     - run: echo $GITHUB_EVENT_NAME
     - run: echo $GITHUB_RUN_NUMBER
     - run: echo $GITHUB_RUN_ID
+    - run: echo $DOCKER_BUILDKIT
 
 # Experiment with buildkit - todo: can we use with external repository cache?
 #  build-pool-image:
@@ -34,6 +37,8 @@ jobs:
 
   assure-image-indypool:
     runs-on: ubuntu-16.04
+    env:
+      DOCKER_BUILDKIT: 1
     steps:
       - name: Git checkout
         uses: actions/checkout@v2
@@ -53,11 +58,13 @@ jobs:
       - name: Build indy_pool
         run: |
            set -x
-           DOCKER_BUILDKIT=1 docker build  --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH --build-arg pool_ip=127.0.0.1 -f ci/indy-pool.dockerfile -t indy_pool:$REF_HASH .
+           docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH --build-arg pool_ip=127.0.0.1 -f ci/indy-pool.dockerfile -t indy_pool:$REF_HASH .
            docker tag indy_pool:$REF_HASH docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH && docker push docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
 
   build-image-ubuntu16-libindy:
     runs-on: ubuntu-16.04
+    env:
+      DOCKER_BUILDKIT: 1
     steps:
       - name: Git checkout
         uses: actions/checkout@v2
@@ -77,7 +84,7 @@ jobs:
           docker image ls
           echo "Remote image to be used as layer cache"
           docker image inspect docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH
-          DOCKER_BUILDKIT=1 docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH \
+          docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH \
                        -f "libindy.Dockerfile" \
                        -t ubuntu16-libindy:$REF_HASH \
                        .
@@ -93,6 +100,8 @@ jobs:
 
   build-image-ubuntu16-libvcx:
     runs-on: ubuntu-16.04
+    env:
+      DOCKER_BUILDKIT: 1
     steps:
       - name: Git checkout
         uses: actions/checkout@v2
@@ -109,7 +118,7 @@ jobs:
       - name: Building docker image
         run: |
           set -x
-          DOCKER_BUILDKIT=1 docker build  --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH \
+          docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH \
                        -f "libvcx.Dockerfile" \
                        -t ubuntu16-libvcx:$REF_HASH \
                        .
@@ -120,6 +129,8 @@ jobs:
 
   run-libindy-unittests-docker:
     runs-on: ubuntu-16.04
+    env:
+      DOCKER_BUILDKIT: 1
     needs: [assure-image-indypool, build-image-ubuntu16-libindy]
     steps:
       - name: Git checkout
@@ -153,6 +164,8 @@ jobs:
 
   run-libvcx-unittests-docker:
     runs-on: ubuntu-16.04
+    env:
+      DOCKER_BUILDKIT: 1
     needs: [assure-image-indypool, build-image-ubuntu16-libvcx]
     steps:
       - name: Git checkout
