@@ -123,10 +123,10 @@ jobs:
                         --network host \
                         docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH
 
-          docker run --rm -d --name libindy-tests \
-                          --network host \
-                          docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH \
-                          cd '$HOME'/indy-sdk/libindy && cargo test
+          docker run --rm -ti -d --name libindy-tests \
+                              --network host \
+                              docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH \
+                              bash -c '(cd $HOME/indy-sdk/libindy && cargo test)'
 
 #
 #
