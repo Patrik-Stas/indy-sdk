@@ -53,7 +53,7 @@ jobs:
       - name: Build indy_pool
         run: |
            set -x
-           docker build --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH --build-arg pool_ip=127.0.0.1 -f ci/indy-pool.dockerfile -t indy_pool:$REF_HASH .
+           DOCKER_BUILDKIT=1 docker build  --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH --build-arg pool_ip=127.0.0.1 -f ci/indy-pool.dockerfile -t indy_pool:$REF_HASH .
            docker tag indy_pool:$REF_HASH docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH && docker push docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
 
   build-image-ubuntu16-libindy:
@@ -77,8 +77,8 @@ jobs:
           docker image ls
           echo "Remote image to be used as layer cache"
           docker image inspect docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH
-          docker build --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH \
-                       -f "docker/libindy.Dockerfile" \
+          DOCKER_BUILDKIT=1 docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH \
+                       -f "libindy.Dockerfile" \
                        -t ubuntu16-libindy:$REF_HASH \
                        .
 
@@ -109,8 +109,8 @@ jobs:
       - name: Building docker image
         run: |
           set -x
-          docker build --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH \
-                       -f "docker/libvcx.Dockerfile" \
+          DOCKER_BUILDKIT=1 docker build  --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH \
+                       -f "libvcx.Dockerfile" \
                        -t ubuntu16-libvcx:$REF_HASH \
                        .
           docker tag ubuntu16-libvcx:$REF_HASH \
