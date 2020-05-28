@@ -126,6 +126,61 @@ jobs:
                      docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH
           docker push docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH || true
 
+  build-image-ubuntu16-vcxagency:
+    runs-on: ubuntu-16.04
+    env:
+      DOCKER_BUILDKIT: 1
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v2
+      - name: Docker setup
+        run: |
+          echo ::set-env name=GITHUB_REPOSITORY_LOWERCASE::$(echo $GITHUB_REPOSITORY | awk '{print tolower($0)}')
+          REF_HASH=`echo -n "$GITHUB_REF-$GITHUB_ACTOR" | shasum | cut -f1 -d" "`
+          echo ::set-env name=REF_HASH::$(echo $REF_HASH)
+          echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
+      - name: Pull image ubuntu16-vcxagency
+        run: |
+          set -x
+          docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-vcxagency:$REF_HASH || true
+      - name: Building docker image
+        run: |
+          set -x
+          docker build --build-arg BUILDKIT_INLINE_CACHE=1 \
+                       --build-arg BASE_IMAGE_LIBINDY=docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH \
+                       --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-vcxagency:$REF_HASH \
+                       -f "vcxagency.Dockerfile" \
+                       -t ubuntu16-vcxagency:$REF_HASH \
+                       .
+          docker tag ubuntu16-vcxagency:$REF_HASH \
+                     docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-vcxagency:$REF_HASH
+          docker push docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-vcxagency:$REF_HASH || true
+
+  run-libvcx-unittests-vcxagency:
+    runs-on: ubuntu-16.04
+    needs: [build-image-ubuntu16-vcxagency]
+    env:
+      DOCKER_BUILDKIT: 1
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v2
+      - name: Docker setup
+        run: |
+          echo ::set-env name=GITHUB_REPOSITORY_LOWERCASE::$(echo $GITHUB_REPOSITORY | awk '{print tolower($0)}')
+          REF_HASH=`echo -n "$GITHUB_REF-$GITHUB_ACTOR" | shasum | cut -f1 -d" "`
+          echo ::set-env name=REF_HASH::$(echo $REF_HASH)
+          echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
+      - name: Pull image ubuntu16-vcxagency
+        run: |
+          set -x
+          docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-vcxagency:$REF_HASH || true
+      - name: Building docker image
+        run: |
+          set -x
+          docker run --rm -i --name libindy-tests \
+                              --network host \
+                              docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-vcxagency:$REF_HASH \
+                              bash -c '(cd $HOME/indy-sdk/vcx/dummy-cloud-agent && cargo test)'
 
   run-libindy-unittests-docker:
     runs-on: ubuntu-16.04
@@ -166,7 +221,7 @@ jobs:
     runs-on: ubuntu-16.04
     env:
       DOCKER_BUILDKIT: 1
-    needs: [assure-image-indypool, build-image-ubuntu16-libvcx]
+    needs: [assure-image-indypool, build-image-ubuntu16-libvcx, build-image-ubuntu16-vcxagency]
     steps:
       - name: Git checkout
         uses: actions/checkout@v2
@@ -190,6 +245,10 @@ jobs:
           docker run -d --name indylocalhost \
                         --network host \
                         docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH
+
+          docker run -d --name indylocalhost \
+                        --network host \
+                        docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/vcxagency:$REF_HASH
 
           docker run --rm -i --name libindy-tests \
                               --network host \

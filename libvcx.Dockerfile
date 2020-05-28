@@ -1,4 +1,4 @@
-FROM ubuntu:16.04 as BASE
+FROM ubuntu:16.04
 
 RUN apt-get update && \
     apt-get install -y \
@@ -54,15 +54,15 @@ WORKDIR /home/indy/indy-sdk
 COPY --chown=indy:indy ./ ./
 
 RUN ls /home/indy/indy-sdk
-RUN cargo build --release --manifest-path=/home/indy/indy-sdk/libindy/Cargo.toml
+RUN cargo build --manifest-path=/home/indy/indy-sdk/libindy/Cargo.toml
 USER root
-RUN mv /home/indy/indy-sdk/libindy/target/release/*.so /usr/lib
-USER indy
-RUN cargo build --release --manifest-path=/home/indy/indy-sdk/vcx/libvcx/Cargo.toml
-RUN cargo build --release --manifest-path=/home/indy/indy-sdk/libnullpay/Cargo.toml
+RUN mv /home/indy/indy-sdk/libindy/target/debug/*.so /usr/lib
+USER indydebug
+RUN cargo build --manifest-path=/home/indy/indy-sdk/vcx/libvcx/Cargo.toml
+RUN cargo build --manifest-path=/home/indy/indy-sdk/libnullpay/Cargo.toml
 USER root
-RUN mv /home/indy/indy-sdk/vcx/libvcx/target/release/*.so /usr/lib
-RUN mv /home/indy/indy-sdk/libnullpay/target/release/*.so /usr/lib
+RUN mv /home/indy/indy-sdk/vcx/libvcx/target/debug/*.so /usr/lib
+RUN mv /home/indy/indy-sdk/libnullpay/target/debug/*.so /usr/lib
 USER indy
 
 
