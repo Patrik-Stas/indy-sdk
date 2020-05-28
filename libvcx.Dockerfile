@@ -53,10 +53,6 @@ ENV PATH /home/indy/.cargo/bin:$PATH
 WORKDIR /home/indy/indy-sdk
 COPY --chown=indy:indy ./ ./
 
-#COPY --chown=indy:indy ./libindy ./libindy
-#COPY --chown=indy:indy ./vcx ./vcx
-#COPY --chown=indy:indy ./wrappers ./wrappers
-
 RUN ls /home/indy/indy-sdk
 RUN cargo build --release --manifest-path=/home/indy/indy-sdk/libindy/Cargo.toml
 USER root
@@ -67,26 +63,6 @@ RUN cargo build --release --manifest-path=/home/indy/indy-sdk/libnullpay/Cargo.t
 USER root
 RUN mv /home/indy/indy-sdk/vcx/libvcx/target/release/*.so /usr/lib
 RUN mv /home/indy/indy-sdk/libnullpay/target/release/*.so /usr/lib
-
-FROM ubuntu:16.04
-
-RUN apt-get update && \
-    apt-get install -y \
-      libssl-dev \
-      apt-transport-https \
-      ca-certificates
-
-RUN useradd -ms /bin/bash -u 1000 indy
-USER indy
-
-WORKDIR /home/indy
-COPY --from=BASE /var/lib/dpkg/info /var/lib/dpkg/info
-COPY --from=BASE /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu
-COPY --from=BASE /usr/local /usr/local
-
-COPY --from=BASE /usr/lib/libindy.so /usr/lib/libindy.so
-COPY --from=BASE /usr/lib/libvcx.so /usr/lib/libvcx.so
-
 USER indy
 
 
