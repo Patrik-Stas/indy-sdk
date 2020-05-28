@@ -194,7 +194,7 @@ jobs:
           docker run --rm -i --name libindy-tests \
                               --network host \
                               docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH \
-                              bash -c '(cd $HOME/indy-sdk/libvcx && cargo test)'
+                              bash -c '(cd $HOME/indy-sdk/vcx/libvcx && cargo test)'
 
 
 #
