@@ -59,10 +59,14 @@ COPY --chown=indy:indy ./ ./
 
 RUN ls /home/indy/indy-sdk
 RUN cargo build --release --manifest-path=/home/indy/indy-sdk/libindy/Cargo.toml
-RUN cargo build --release --manifest-path=/home/indy/indy-sdk/vcx/libvcx/Cargo.toml
 USER root
 RUN mv /home/indy/indy-sdk/libindy/target/release/*.so /usr/lib
+USER indy
+RUN cargo build --release --manifest-path=/home/indy/indy-sdk/vcx/libvcx/Cargo.toml
+RUN cargo build --release --manifest-path=/home/indy/indy-sdk/libnullpay/Cargo.toml
+USER root
 RUN mv /home/indy/indy-sdk/vcx/libvcx/target/release/*.so /usr/lib
+RUN mv /home/indy/indy-sdk/libnullpay/target/release/*.so /usr/lib
 
 FROM ubuntu:16.04
 
