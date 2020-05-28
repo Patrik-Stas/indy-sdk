@@ -46,11 +46,13 @@ jobs:
            echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
       - name: Ref hash print
         run: echo $REF_HASH
-      - name: Pull cached
-        run: docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
+      - name: Try to pull image
+        run: |
+          set -x
+          docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
       - name: Build indy_pool
         run: |
-           echo $REF_HASH
+           set -x
            docker build --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH --build-arg pool_ip=127.0.0.1 -f ci/indy-pool.dockerfile -t indy_pool:$REF_HASH .
            docker tag indy_pool:$REF_HASH docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH && docker push docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
 
@@ -65,10 +67,13 @@ jobs:
           REF_HASH=`echo -n "$GITHUB_REF-$GITHUB_ACTOR" | shasum | cut -f1 -d" "`
           echo ::set-env name=REF_HASH::$(echo $REF_HASH)
           echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
-      - name: Pull cached
-        run: docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH || true
+      - name: Try to pull image
+        run: |
+           set -x
+           docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH || true
       - name: Building docker image
         run: |
+          set -x
           docker image ls
           echo "Remote image to be used as layer cache"
           docker image inspect docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH
@@ -97,10 +102,13 @@ jobs:
           REF_HASH=`echo -n "$GITHUB_REF-$GITHUB_ACTOR" | shasum | cut -f1 -d" "`
           echo ::set-env name=REF_HASH::$(echo $REF_HASH)
           echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
-      - name: Pull cached
-        run: docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH || true
+      - name: Pull image ubuntu16-libvcx
+        run: |
+           set -x
+           docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH || true
       - name: Building docker image
         run: |
+          set -x
           docker build --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH \
                        -f "docker/libvcx.Dockerfile" \
                        -t ubuntu16-libvcx:$REF_HASH \
@@ -108,6 +116,7 @@ jobs:
           docker tag ubuntu16-libvcx:$REF_HASH \
                      docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH
           docker push docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH || true
+
 
   run-libindy-unittests-docker:
     runs-on: ubuntu-16.04
@@ -122,19 +131,58 @@ jobs:
           echo ::set-env name=REF_HASH::$(echo $REF_HASH)
           echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
       - name: Pull image ubuntu16-libindy
-        run: docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH || true
-      - name: Pull image indy_pool
-        run: docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
-      - name: Building docker image
         run: |
+           set -x
+           docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH || true
+      - name: Pull image indy_pool
+        run: |
+           set -x
+           docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
+      - name: Run libindy unit tests in Docker
+        run: |
+          set -x
           docker run -d --name indylocalhost \
                         --network host \
                         docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH
 
-          docker run --rm -ti -d --name libindy-tests \
+          docker run --rm -ti --name libindy-tests \
                               --network host \
                               docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH \
                               bash -c '(cd $HOME/indy-sdk/libindy && cargo test)'
+
+
+  run-libvcx-unittests-docker:
+    runs-on: ubuntu-16.04
+    needs: [assure-image-indypool, build-image-ubuntu16-libvcx]
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v2
+      - name: Docker setup
+        run: |
+          echo ::set-env name=GITHUB_REPOSITORY_LOWERCASE::$(echo $GITHUB_REPOSITORY | awk '{print tolower($0)}')
+          REF_HASH=`echo -n "$GITHUB_REF-$GITHUB_ACTOR" | shasum | cut -f1 -d" "`
+          echo ::set-env name=REF_HASH::$(echo $REF_HASH)
+          echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
+      - name: Pull image ubuntu16-libvcx
+        run: |
+          set -x
+          docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH || true
+      - name: Pull image indy_pool
+        run: |
+          set -x
+          docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
+      - name: Run libindy unit tests in Docker
+        run: |
+          set -x
+          docker run -d --name indylocalhost \
+                        --network host \
+                        docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH
+
+          docker run --rm -ti --name libindy-tests \
+                              --network host \
+                              docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH \
+                              bash -c '(cd $HOME/indy-sdk/libvcx && cargo test)'
+
 
 #
 #
