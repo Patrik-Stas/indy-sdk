@@ -22,6 +22,7 @@ jobs:
       - run: echo $GITHUB_RUN_NUMBER
       - run: echo $GITHUB_RUN_ID
       - run: echo $DOCKER_BUILDKIT
+      - run: docker --version
 
   build-image-indypool:
     runs-on: ubuntu-16.04

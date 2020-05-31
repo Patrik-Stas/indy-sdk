@@ -2,6 +2,10 @@
 **/*.dockerignore
 **/.gitignore
 **/.idea
+**/.git
+**/.gitattributes
+**/CHANGELOG.md
+**/*.md
 
 **/node_modules
 **/build
