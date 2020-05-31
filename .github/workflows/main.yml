@@ -263,7 +263,7 @@ jobs:
           docker run --rm -i --name libindy-tests \
                               --network host \
                               docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-vcxagency:$REF_HASH \
-                              bash -c '(cd $HOME/indy-sdk/vcx/dummy-cloud-agent && TEST_POOL_IP=127.0.0.1 cargo test)'
+                              bash -c '(cd $HOME/indy-sdk/vcx/dummy-cloud-agent && RUST_TEST_THREADS=1 TEST_POOL_IP=127.0.0.1 cargo test)'
 
 
   test-libvcx:
@@ -302,7 +302,7 @@ jobs:
           docker run --rm -i --name libindy-tests \
                               --network host \
                               docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH \
-                              bash -c '(cd $HOME/indy-sdk/vcx/libvcx && TEST_POOL_IP=127.0.0.1 cargo test --release)'
+                              bash -c '(cd $HOME/indy-sdk/vcx/libvcx &&  RUST_TEST_THREADS=1 TEST_POOL_IP=127.0.0.1 cargo test --release)'
 
 
 
