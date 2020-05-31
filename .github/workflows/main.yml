@@ -12,28 +12,28 @@ jobs:
     env:
       DOCKER_BUILDKIT: 1
     steps:
-    - run: echo $GITHUB_REPOSITORY
-    - run: echo $GITHUB_ACTOR
-    - run: echo $GITHUB_REF
-    - run: echo $GITHUB_HEAD_REF
-    - run: echo $GITHUB_BASE_REF
-    - run: echo $GITHUB_WORKSPACE
-    - run: echo $GITHUB_EVENT_NAME
-    - run: echo $GITHUB_RUN_NUMBER
-    - run: echo $GITHUB_RUN_ID
-    - run: echo $DOCKER_BUILDKIT
+      - run: echo $GITHUB_REPOSITORY
+      - run: echo $GITHUB_ACTOR
+      - run: echo $GITHUB_REF
+      - run: echo $GITHUB_HEAD_REF
+      - run: echo $GITHUB_BASE_REF
+      - run: echo $GITHUB_WORKSPACE
+      - run: echo $GITHUB_EVENT_NAME
+      - run: echo $GITHUB_RUN_NUMBER
+      - run: echo $GITHUB_RUN_ID
+      - run: echo $DOCKER_BUILDKIT
 
-# Experiment with buildkit - todo: can we use with external repository cache?
-#  build-pool-image:
-#    runs-on: ubuntu-16.04
-#    steps:
-#      - name: Git checkout
-#        uses: actions/checkout@v1
-#      - name: Building docker image
-#        run: |
-#          echo "Building indy pool"
-#          DOCKER_BUILDKIT=1 docker build --build-arg pool_ip=127.0.0.1 -f ci/indy-pool.dockerfile -t indy_pool .
-#          docker image ls
+  # Experiment with buildkit - todo: can we use with external repository cache?
+  #  build-pool-image:
+  #    runs-on: ubuntu-16.04
+  #    steps:
+  #      - name: Git checkout
+  #        uses: actions/checkout@v1
+  #      - name: Building docker image
+  #        run: |
+  #          echo "Building indy pool"
+  #          DOCKER_BUILDKIT=1 docker build --build-arg pool_ip=127.0.0.1 -f ci/indy-pool.dockerfile -t indy_pool .
+  #          docker image ls
 
   assure-image-indypool:
     runs-on: ubuntu-16.04
@@ -44,11 +44,11 @@ jobs:
         uses: actions/checkout@v2
       - name: Docker setup
         run: |
-           echo ::set-env name=GITHUB_REPOSITORY_LOWERCASE::$(echo $GITHUB_REPOSITORY | awk '{print tolower($0)}')
-           REF_HASH=`echo -n "$GITHUB_REF-$GITHUB_ACTOR" | shasum | cut -f1 -d" "`
-           echo ::set-env name=REF_HASH::$(echo $REF_HASH)
-           echo $REF_HASH
-           echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
+          echo ::set-env name=GITHUB_REPOSITORY_LOWERCASE::$(echo $GITHUB_REPOSITORY | awk '{print tolower($0)}')
+          REF_HASH=`echo -n "$GITHUB_REF-$GITHUB_ACTOR" | shasum | cut -f1 -d" "`
+          echo ::set-env name=REF_HASH::$(echo $REF_HASH)
+          echo $REF_HASH
+          echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
       - name: Ref hash print
         run: echo $REF_HASH
       - name: Try to pull image
@@ -57,9 +57,9 @@ jobs:
           docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
       - name: Build indy_pool
         run: |
-           set -x
-           docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH --build-arg pool_ip=127.0.0.1 -f ci/indy-pool.dockerfile -t indy_pool:$REF_HASH .
-           docker tag indy_pool:$REF_HASH docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH && docker push docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
+          set -x
+          docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH --build-arg pool_ip=127.0.0.1 -f ci/indy-pool.dockerfile -t indy_pool:$REF_HASH .
+          docker tag indy_pool:$REF_HASH docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH && docker push docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
 
   build-image-ubuntu16-libindy:
     runs-on: ubuntu-16.04
@@ -76,8 +76,8 @@ jobs:
           echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
       - name: Try to pull image
         run: |
-           set -x
-           docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH || true
+          set -x
+          docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH || true
       - name: Building docker image
         run: |
           set -x
@@ -113,8 +113,8 @@ jobs:
           echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
       - name: Pull image ubuntu16-libvcx
         run: |
-           set -x
-           docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH || true
+          set -x
+          docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libvcx:$REF_HASH || true
       - name: Building docker image
         run: |
           set -x
@@ -144,6 +144,10 @@ jobs:
         run: |
           set -x
           docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-vcxagency:$REF_HASH || true
+      - name: Pull image ubuntu16-libindy
+        run: |
+          set -x
+          docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH
       - name: Building docker image
         run: |
           set -x
@@ -199,12 +203,12 @@ jobs:
           echo ${{ secrets.PACKAGES_ACCESS_TOKEN }} | docker login docker.pkg.github.com -u $GITHUB_ACTOR --password-stdin
       - name: Pull image ubuntu16-libindy
         run: |
-           set -x
-           docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH || true
+          set -x
+          docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH || true
       - name: Pull image indy_pool
         run: |
-           set -x
-           docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
+          set -x
+          docker pull docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH || true
       - name: Run libindy unit tests in Docker
         run: |
           set -x
