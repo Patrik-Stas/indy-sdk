@@ -295,7 +295,7 @@ jobs:
                         --network host \
                         docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/indy_pool:$REF_HASH
 
-          docker run -d --name indylocalhost \
+          docker run -d --name vcxagency \
                         --network host \
                         docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-vcxagency:$REF_HASH
 
