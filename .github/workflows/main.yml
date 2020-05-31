@@ -237,7 +237,7 @@ jobs:
   #  ██      ██ ██   ██  ██  ██  ██       ██ ██ 
   #  ███████ ██ ██████    ████    ██████ ██   ██ 
   #
-                                                
+
   test-vcxagency:
     runs-on: ubuntu-16.04
     needs: [build-image-ubuntu16-vcxagency]
