@@ -219,7 +219,7 @@ jobs:
           docker run --rm -i --name libindy-tests \
                               --network host \
                               docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH \
-                              bash -c '(cd $HOME/indy-sdk/libindy && cargo test)'
+                              bash -c '(cd $HOME/indy-sdk/libindy && RUST_TEST_THREADS=1 cargo test --features sodium_static)'
 
 
   run-libvcx-unittests-docker:
