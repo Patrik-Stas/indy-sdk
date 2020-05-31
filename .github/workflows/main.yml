@@ -297,7 +297,7 @@ jobs:
 
           docker run -d --name indylocalhost \
                         --network host \
-                        docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/vcxagency:$REF_HASH
+                        docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-vcxagency:$REF_HASH
 
           docker run --rm -i --name libindy-tests \
                               --network host \
