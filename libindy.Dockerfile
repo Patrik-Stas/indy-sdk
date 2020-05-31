@@ -56,8 +56,8 @@ COPY --chown=indy:indy ./ ./
 #COPY --chown=indy:indy ./wrappers ./wrappers
 
 # TODO :Check that libvcx directory was ignored according to correct dockerignore file
-RUN ls /home/indy/indy-sdk
-RUN ls /home/indy/indy-sdk/libindy
+RUN ls -lah /home/indy/indy-sdk
+RUN ls -lah /home/indy/indy-sdk/libindy
 RUN cargo build --release --manifest-path=/home/indy/indy-sdk/libindy/Cargo.toml
 USER root
 RUN mv /home/indy/indy-sdk/libindy/target/release/*.so /usr/lib

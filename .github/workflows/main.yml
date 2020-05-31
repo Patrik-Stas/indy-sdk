@@ -82,7 +82,8 @@ jobs:
         run: |
           set -x
           docker image ls
-          echo "Remote image to be used as layer cache"
+          echo "DOCKER_BUILDKIT=$DOCKER_BUILDKIT"
+          echo "Remote image to be used as layer cache:"
           docker image inspect docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH
           docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from docker.pkg.github.com/$GITHUB_REPOSITORY_LOWERCASE/ubuntu16-libindy:$REF_HASH \
                        -f "libindy.Dockerfile" \
