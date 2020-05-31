@@ -58,11 +58,11 @@ RUN cargo build --manifest-path=/home/indy/indy-sdk/libindy/Cargo.toml
 USER root
 RUN mv /home/indy/indy-sdk/libindy/target/debug/*.so /usr/lib
 USER indy
-RUN cargo build --manifest-path=/home/indy/indy-sdk/vcx/libvcx/Cargo.toml
-RUN cargo build --manifest-path=/home/indy/indy-sdk/libnullpay/Cargo.toml
+RUN cargo build --release --manifest-path=/home/indy/indy-sdk/vcx/libvcx/Cargo.toml
+RUN cargo build --release --manifest-path=/home/indy/indy-sdk/libnullpay/Cargo.toml
 USER root
-RUN mv /home/indy/indy-sdk/vcx/libvcx/target/debug/*.so /usr/lib
-RUN mv /home/indy/indy-sdk/libnullpay/target/debug/*.so /usr/lib
+RUN mv /home/indy/indy-sdk/vcx/libvcx/release/debug/*.so /usr/lib
+RUN mv /home/indy/indy-sdk/libnullpay/release/debug/*.so /usr/lib
 USER indy
 
 

@@ -5,7 +5,7 @@ USER indy
 WORKDIR /home/indy/indy-sdk
 COPY --chown=indy:indy ./vcx/dummy-cloud-agent ./vcx/dummy-cloud-agent
 
-RUN cargo build --manifest-path=/home/indy/indy-sdk/vcx/dummy-cloud-agent/Cargo.toml
+RUN cargo build --release --manifest-path=/home/indy/indy-sdk/vcx/dummy-cloud-agent/Cargo.toml
 
 
 
