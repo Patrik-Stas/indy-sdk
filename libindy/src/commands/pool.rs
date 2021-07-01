@@ -135,7 +135,7 @@ impl PoolCommandExecutor {
         };
     }
 
-    fn create(&self, name: &str, config: Option<PoolConfig>) -> IndyResult<()> {
+    pub fn create(&self, name: &str, config: Option<PoolConfig>) -> IndyResult<()> {
         debug!("create >>> name: {:?}, config: {:?}", name, config);
 
         self.pool_service.create(name, config)?;
@@ -145,7 +145,7 @@ impl PoolCommandExecutor {
         Ok(())
     }
 
-    fn delete(&self, name: &str) -> IndyResult<()> {
+    pub fn delete(&self, name: &str) -> IndyResult<()> {
         debug!("delete >>> name: {:?}", name);
 
         self.pool_service.delete(name)?;
@@ -155,7 +155,7 @@ impl PoolCommandExecutor {
         Ok(())
     }
 
-    fn open(&self, name: &str, config: Option<PoolOpenConfig>, cb: Box<dyn Fn(IndyResult<PoolHandle>) + Send>) {
+    pub fn open(&self, name: &str, config: Option<PoolOpenConfig>, cb: Box<dyn Fn(IndyResult<PoolHandle>) + Send>) {
         debug!("open >>> name: {:?}, config: {:?}", name, config);
 
         let result = self.pool_service.open(name, config)
@@ -173,7 +173,7 @@ impl PoolCommandExecutor {
         debug!("open <<<");
     }
 
-    fn list(&self) -> IndyResult<String> {
+    pub fn list(&self) -> IndyResult<String> {
         debug!("list >>> ");
 
         let res = self.pool_service
@@ -185,7 +185,7 @@ impl PoolCommandExecutor {
         Ok(res)
     }
 
-    fn close(&self, pool_handle: PoolHandle, cb: Box<dyn Fn(IndyResult<()>) + Send>) {
+    pub fn close(&self, pool_handle: PoolHandle, cb: Box<dyn Fn(IndyResult<()>) + Send>) {
         debug!("close >>> handle: {:?}", pool_handle);
 
         let result = self.pool_service.close(pool_handle)
@@ -203,7 +203,7 @@ impl PoolCommandExecutor {
         debug!("close <<<");
     }
 
-    fn refresh(&self, handle: PoolHandle, cb: Box<dyn Fn(IndyResult<()>) + Send>) {
+    pub fn refresh(&self, handle: PoolHandle, cb: Box<dyn Fn(IndyResult<()>) + Send>) {
         debug!("refresh >>> handle: {:?}", handle);
 
         let result = self.pool_service.refresh(handle)
@@ -221,7 +221,7 @@ impl PoolCommandExecutor {
         debug!("refresh <<<");
     }
 
-    fn set_protocol_version(&self, version: usize) -> IndyResult<()> {
+    pub fn set_protocol_version(&self, version: usize) -> IndyResult<()> {
         debug!("set_protocol_version >>> version: {:?}", version);
 
         if version != 1 && version != 2 {
