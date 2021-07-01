@@ -61,7 +61,7 @@ extern crate indy_wallet;
 mod utils;
 
 pub mod api;
-mod commands;
+pub mod commands;
 pub mod services;
 pub mod domain;
 
