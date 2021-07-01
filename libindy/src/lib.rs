@@ -63,7 +63,7 @@ mod utils;
 pub mod api;
 mod commands;
 pub mod services;
-mod domain;
+pub mod domain;
 
 #[cfg(test)]
 mod tests {
