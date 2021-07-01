@@ -113,6 +113,59 @@ lazy_static! {
     static ref COMMAND_EXECUTOR: Mutex<CommandExecutor> = Mutex::new(CommandExecutor::new());
 }
 
+pub fn build_executors()
+    -> (
+        AnoncredsCommandExecutor,
+        CryptoCommandExecutor,
+        LedgerCommandExecutor,
+        PoolCommandExecutor,
+        DidCommandExecutor,
+        WalletCommandExecutor,
+        PairwiseCommandExecutor,
+        BlobStorageCommandExecutor,
+        NonSecretsCommandExecutor,
+        PaymentsCommandExecutor,
+        CacheCommandExecutor,
+        MetricsCommandExecutor
+    ) {
+    let anoncreds_service = Rc::new(AnoncredsService::new());
+    let blob_storage_service = Rc::new(BlobStorageService::new());
+    let crypto_service = Rc::new(CryptoService::new());
+    let ledger_service = Rc::new(LedgerService::new());
+    let payments_service = Rc::new(PaymentsService::new());
+    let pool_service = Rc::new(PoolService::new());
+    let wallet_service = Rc::new(WalletService::new());
+    let metrics_service = Rc::new(MetricsService::new());
+
+    let anoncreds_command_executor = AnoncredsCommandExecutor::new(anoncreds_service.clone(), blob_storage_service.clone(), pool_service.clone(), wallet_service.clone(), crypto_service.clone());
+    let crypto_command_executor = CryptoCommandExecutor::new(wallet_service.clone(), crypto_service.clone());
+    let ledger_command_executor = LedgerCommandExecutor::new(pool_service.clone(), crypto_service.clone(), wallet_service.clone(), ledger_service.clone());
+    let pool_command_executor = PoolCommandExecutor::new(pool_service.clone());
+    let did_command_executor = DidCommandExecutor::new(wallet_service.clone(), crypto_service.clone(), ledger_service.clone());
+    let wallet_command_executor = WalletCommandExecutor::new(wallet_service.clone(), crypto_service.clone());
+    let pairwise_command_executor = PairwiseCommandExecutor::new(wallet_service.clone());
+    let blob_storage_command_executor = BlobStorageCommandExecutor::new(blob_storage_service.clone());
+    let non_secret_command_executor = NonSecretsCommandExecutor::new(wallet_service.clone());
+    let payments_command_executor = PaymentsCommandExecutor::new(payments_service.clone(), wallet_service.clone(), crypto_service.clone(), ledger_service.clone());
+    let cache_command_executor = CacheCommandExecutor::new(wallet_service.clone());
+    let metrics_command_executor = MetricsCommandExecutor::new(wallet_service.clone(), metrics_service.clone());
+
+    return (
+        anoncreds_command_executor,
+        crypto_command_executor,
+        ledger_command_executor,
+        pool_command_executor,
+        did_command_executor,
+        wallet_command_executor,
+        pairwise_command_executor,
+        blob_storage_command_executor,
+        non_secret_command_executor,
+        payments_command_executor,
+        cache_command_executor,
+        metrics_command_executor
+    )
+}
+
 impl CommandExecutor {
     pub fn instance<'mutex>() -> MutexGuard<'mutex, CommandExecutor> {
         COMMAND_EXECUTOR.lock().unwrap()
