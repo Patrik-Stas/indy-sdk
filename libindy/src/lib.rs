@@ -58,7 +58,7 @@ extern crate indy_wallet;
 
 // Note that to use macroses from util inside of other modules it must be loaded first!
 #[macro_use]
-mod utils;
+pub mod utils;
 
 pub mod api;
 pub mod commands;
