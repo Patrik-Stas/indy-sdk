@@ -62,7 +62,8 @@ impl PoolCommandExecutor {
             }
             PoolCommand::Close(handle, cb) => {
                 debug!(target: "pool_command_executor", "Close command received");
-                self.close(handle, cb).await;
+                // cb(self.close(handle, cb).await);
+                panic!("close via pool command disabled; todo")
             }
             PoolCommand::Refresh(handle, cb) => {
                 debug!(target: "pool_command_executor", "Refresh command received");
@@ -98,7 +99,11 @@ impl PoolCommandExecutor {
     pub async fn open(&self, name: String, config: Option<PoolOpenConfig>) -> IndyResult<PoolHandle>  {
         debug!("open >>> name: {:?}, config: {:?}", name, config);
 
-        self.pool_service.open(name, config).await
+        let result = self.pool_service.open(name, config).await;
+
+        debug!("open <<<");
+
+        result
     }
 
     pub fn list(&self) -> IndyResult<String> {
@@ -113,14 +118,14 @@ impl PoolCommandExecutor {
         Ok(res)
     }
 
-    pub async fn close(&self, pool_handle: PoolHandle, cb: Box<dyn Fn(IndyResult<()>) + Send>) {
+    pub async fn close(&self, pool_handle: PoolHandle) -> IndyResult<()> {
         debug!("close >>> handle: {:?}", pool_handle);
 
         let result = self.pool_service.close(pool_handle).await;
 
-        cb(result);
-
         debug!("close <<<");
+
+        result
     }
 
     pub async fn refresh(&self, handle: PoolHandle, cb: Box<dyn Fn(IndyResult<()>) + Send>) {
