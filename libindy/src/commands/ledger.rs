@@ -1273,12 +1273,15 @@ impl LedgerCommandExecutor {
     }
 
     pub fn get_schema(&self, pool_handle: i32, submitter_did: Option<&DidValue>, id: &SchemaId, cb: BoxedCallbackStringStringSend) {
+        info!("get_schema >>> pool_handle={}, submitter_did={:?}", pool_handle, submitter_did);
         let request_json = try_cb!(self.build_get_schema_request(submitter_did, id), cb);
 
         let cb_id = next_command_handle();
+        info!("_get_schema_continue >>> finished, going to ADD callback {} from pending_callbacks", cb_id);
         self.pending_callbacks.borrow_mut().insert(cb_id, cb);
         let id = id.clone();
 
+        info!("get_schema >>> going to submit getSchemaContinue request");
         self.submit_request(pool_handle, &request_json, Box::new(move |response| {
             CommandExecutor::instance().send(
                 Command::Ledger(
@@ -1290,9 +1293,11 @@ impl LedgerCommandExecutor {
                 )
             ).unwrap();
         }));
+        info!("get_schema >>> finished");
     }
 
     fn _get_schema_continue(&self, id: SchemaId, pool_response: IndyResult<String>, cb_id: CommandHandle) {
+        info!("_get_schema_continue >>> finished, going to REMOVE callback {} from pending_callbacks", cb_id);
         let cb = self.pending_callbacks.borrow_mut().remove(&cb_id).expect("FIXME INVALID STATE");
         let pool_response = try_cb!(pool_response, cb);
         cb(self.ledger_service.parse_get_schema_response(&pool_response, id.get_method().as_ref().map(String::as_str)))
