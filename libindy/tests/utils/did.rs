@@ -2,7 +2,7 @@ extern crate futures;
 
 use indy::did;
 use indy::IndyError;
-use self::futures::Future;
+use indy::future::Future;
 
 use crate::utils::{ledger, pool};
 use crate::utils::types::ResponseType;
@@ -100,6 +100,10 @@ pub fn get_did_metadata(wallet_handle: WalletHandle, did: &str) -> Result<String
 
 pub fn get_my_did_with_metadata(wallet_handle: WalletHandle, did: &str) -> Result<String, IndyError> {
     did::get_my_did_with_metadata(wallet_handle, did).wait()
+}
+
+pub fn list_my_dids_with_meta(wallet_handle: WalletHandle) -> Result<String, IndyError> {
+    did::list_my_dids_with_metadata(wallet_handle).wait()
 }
 
 pub fn abbreviate_verkey(did: &str, verkey: &str) -> Result<String, IndyError> {

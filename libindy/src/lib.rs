@@ -1,4 +1,5 @@
 #![cfg_attr(feature = "fatal_warnings", deny(warnings))]
+extern crate futures;
 
 extern crate byteorder;
 extern crate failure;
@@ -7,6 +8,13 @@ extern crate failure;
 extern crate log;
 
 extern crate serde;
+
+extern crate variant_count;
+
+#[macro_use]
+extern crate num_derive;
+
+extern crate num_traits;
 
 #[macro_use]
 extern crate serde_derive;
@@ -51,12 +59,12 @@ extern crate indy_wallet;
 
 // Note that to use macroses from util inside of other modules it must be loaded first!
 #[macro_use]
-mod utils;
+pub mod utils;
 
 pub mod api;
-mod commands;
+pub mod commands;
 mod services;
-mod domain;
+pub mod domain;
 
 #[cfg(test)]
 mod tests {
