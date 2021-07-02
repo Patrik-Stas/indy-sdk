@@ -53,7 +53,8 @@ impl PoolCommandExecutor {
             }
             PoolCommand::Open(name, config, cb) => {
                 debug!(target: "pool_command_executor", "Open command received");
-                self.open(name, config, cb).await;
+                // cb(self.open(name, config).await);
+                panic!("open via pool command disabled; todo")
             }
             PoolCommand::List(cb) => {
                 debug!(target: "pool_command_executor", "List command received");
@@ -74,7 +75,7 @@ impl PoolCommandExecutor {
         };
     }
 
-    fn create(&self, name: &str, config: Option<PoolConfig>) -> IndyResult<()> {
+    pub fn create(&self, name: &str, config: Option<PoolConfig>) -> IndyResult<()> {
         debug!("create >>> name: {:?}, config: {:?}", name, config);
 
         self.pool_service.create(name, config)?;
@@ -84,7 +85,7 @@ impl PoolCommandExecutor {
         Ok(())
     }
 
-    fn delete(&self, name: &str) -> IndyResult<()> {
+    pub fn delete(&self, name: &str) -> IndyResult<()> {
         debug!("delete >>> name: {:?}", name);
 
         self.pool_service.delete(name)?;
@@ -94,16 +95,13 @@ impl PoolCommandExecutor {
         Ok(())
     }
 
-    async fn open(&self, name: String, config: Option<PoolOpenConfig>, cb: Box<dyn Fn(IndyResult<PoolHandle>) + Send>) {
+    pub async fn open(&self, name: String, config: Option<PoolOpenConfig>) -> IndyResult<PoolHandle>  {
         debug!("open >>> name: {:?}, config: {:?}", name, config);
 
-        let result = self.pool_service.open(name, config).await;
-        cb(result);
-
-        debug!("open <<<");
+        self.pool_service.open(name, config).await
     }
 
-    fn list(&self) -> IndyResult<String> {
+    pub fn list(&self) -> IndyResult<String> {
         debug!("list >>> ");
 
         let res = self.pool_service
@@ -115,7 +113,7 @@ impl PoolCommandExecutor {
         Ok(res)
     }
 
-    async fn close(&self, pool_handle: PoolHandle, cb: Box<dyn Fn(IndyResult<()>) + Send>) {
+    pub async fn close(&self, pool_handle: PoolHandle, cb: Box<dyn Fn(IndyResult<()>) + Send>) {
         debug!("close >>> handle: {:?}", pool_handle);
 
         let result = self.pool_service.close(pool_handle).await;
@@ -125,7 +123,7 @@ impl PoolCommandExecutor {
         debug!("close <<<");
     }
 
-    async fn refresh(&self, handle: PoolHandle, cb: Box<dyn Fn(IndyResult<()>) + Send>) {
+    pub async fn refresh(&self, handle: PoolHandle, cb: Box<dyn Fn(IndyResult<()>) + Send>) {
         debug!("refresh >>> handle: {:?}", handle);
 
         let result = self.pool_service.refresh(handle).await;

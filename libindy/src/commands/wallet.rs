@@ -160,7 +160,7 @@ impl WalletCommandExecutor {
         Ok(())
     }
 
-    async fn _create<'a>(&'a self,
+    pub async fn _create<'a>(&'a self,
                          config: &'a Config,
                          credentials: &'a Credentials) -> IndyResult<()> {
         trace!("_create >>> config: {:?}, credentials: {:?}", config, secret!(credentials));
@@ -176,7 +176,7 @@ impl WalletCommandExecutor {
         res
     }
 
-    async fn _open<'a>(&'a self,
+    pub async fn _open<'a>(&'a self,
                        config: &'a Config,
                        credentials: &'a Credentials) -> IndyResult<WalletHandle> {
         trace!("_open >>> config: {:?}, credentials: {:?}", config, secret!(credentials));
@@ -198,7 +198,7 @@ impl WalletCommandExecutor {
         res
     }
 
-    fn _close(&self, wallet_handle: WalletHandle) -> IndyResult<()> {
+    pub fn _close(&self, wallet_handle: WalletHandle) -> IndyResult<()> {
         trace!("_close >>> handle: {:?}", wallet_handle);
 
         self.wallet_service.close_wallet(wallet_handle)?;
@@ -207,7 +207,7 @@ impl WalletCommandExecutor {
         Ok(())
     }
 
-    async fn _delete<'a>(&'a self,
+    pub async fn _delete<'a>(&'a self,
                          config: &'a Config,
                          credentials: &'a Credentials) -> IndyResult<()> {
         trace!("_delete >>> config: {:?}, credentials: {:?}", config, secret!(credentials));
@@ -223,7 +223,7 @@ impl WalletCommandExecutor {
         res
     }
 
-    async fn _export(&self, wallet_handle: WalletHandle, export_config: &ExportConfig) -> IndyResult<()> {
+    pub async fn _export(&self, wallet_handle: WalletHandle, export_config: &ExportConfig) -> IndyResult<()> {
         trace!("_export >>> handle: {:?}, export_config: {:?}", wallet_handle, secret!(export_config));
 
         let key_data = KeyDerivationData::from_passphrase_with_new_salt(&export_config.key, &export_config.key_derivation_method);
@@ -237,7 +237,7 @@ impl WalletCommandExecutor {
         res
     }
 
-    async fn _import(&self,
+    pub async fn _import(&self,
                      config: &Config,
                      credentials: &Credentials,
                      import_config: &ExportConfig) -> IndyResult<()> {
@@ -272,7 +272,7 @@ impl WalletCommandExecutor {
         Ok(res)
     }
 
-    async fn _derive_key(&self, key_data: KeyDerivationData) -> IndyResult<MasterKey> {
+    pub async fn _derive_key(&self, key_data: KeyDerivationData) -> IndyResult<MasterKey> {
         let (s, r) = futures::channel::oneshot::channel();
         crate::commands::THREADPOOL.lock().unwrap().execute(move || {
             let res = key_data.calc_master_key();

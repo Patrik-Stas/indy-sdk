@@ -96,7 +96,7 @@ impl CacheCommandExecutor {
         }
     }
 
-    async fn get_schema(&self,
+    pub async fn get_schema(&self,
                   pool_handle: PoolHandle,
                   wallet_handle: WalletHandle,
                   submitter_did: &DidValue,
